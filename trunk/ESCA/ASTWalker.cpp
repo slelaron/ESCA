@@ -49,7 +49,7 @@ void ASTWalker::SetIncludeDirectories()
 		false, false); 
 }
 
-void ASTWalker::WalkAST()
+void ASTWalker::WalkAST(string path)
 {
     clang::DiagnosticOptions diagnosticOptions;
     clang::TextDiagnosticPrinter *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(
@@ -130,7 +130,7 @@ void ASTWalker::WalkAST()
         frontendOptions);
 
 
-	string path = "D:\\Programming\\testcode\\test1_1.cpp";
+	//string path = "D:\\Programming\\testcode\\test1_1.cpp";
     //const clang::FileEntry *pFile = fileManager.getFile(argv[1]);
 	const clang::FileEntry *pFile = fileManager.getFile(path.c_str());
     sourceManager.createMainFileID(pFile);

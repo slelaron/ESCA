@@ -1,6 +1,8 @@
 #ifndef ASTWalker_h
 #define ASTWalker_h
 
+#include <string>
+
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <clang/Lex/HeaderSearchOptions.h>
 #include <clang/AST/Stmt.h>
@@ -17,7 +19,8 @@ class ASTWalker
 	public:
 		ASTWalker();
 		~ASTWalker();
-		void WalkAST();
+		inline void WalkAST() { WalkAST("D:\\Programming\\testcode\\test1_1.cpp"); }
+		void WalkAST(std::string path);
 
 	public:
 		void DumpStmt(clang::Stmt *s);

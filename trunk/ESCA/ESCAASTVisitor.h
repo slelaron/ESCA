@@ -1,16 +1,21 @@
 #ifndef ESCAASTVisitor_H
 #define ESCAASTVisitor_H
 
+#include <map>
+#include <vector>
+
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
+
+#include "VersionedVariable.h"
 
 class ASTWalker;
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor> 
 {
 	public:
-		ESCAASTVisitor() : walker(0) {}
+		ESCAASTVisitor();
 	public:
 		bool VisitStmt(clang::Stmt *s);
 		bool VisitBinaryOperator(clang::BinaryOperator* bo);
@@ -26,5 +31,11 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 		inline void SetWalker(ASTWalker *ast_walker) { walker = ast_walker; }
 	private:
 		ASTWalker *walker;
+
+		bool insideMain;
+
+		//std::map<std::string, std::vector<VersionedVariable> > variables;
+		std::map<std::string, int> variables;
+		std::vector<VersionedVariable> allocated;
 };
 #endif

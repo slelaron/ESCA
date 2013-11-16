@@ -85,6 +85,8 @@
     <ClInclude Include="ASTWalker.h" />
     <ClInclude Include="ESCAASTConsumer.h" />
     <ClInclude Include="ESCAASTVisitor.h" />
+    <ClInclude Include="Variable.h" />
+    <ClInclude Include="VersionedVariable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

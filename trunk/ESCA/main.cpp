@@ -9,6 +9,13 @@ using namespace std;
 int main(int argc, char **argv)
 {
 	ASTWalker walker;
-	walker.WalkAST();
+	if (argc > 1)
+	{
+		walker.WalkAST(argv[1]);
+	}
+	else
+	{
+		walker.WalkAST();
+	}
 	return 0;
 }

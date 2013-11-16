@@ -5,92 +5,184 @@
 #include "ESCAASTVisitor.h"
 #include "ASTWalker.h"
 
+#include "Variable.h"
+
 using namespace clang;
 using namespace std;
 
+ESCAASTVisitor::ESCAASTVisitor() : walker(0), insideMain(false)
+{
+}
+
 bool ESCAASTVisitor::VisitStmt(clang::Stmt *s)
 {
-		llvm::errs() << "Visiting statement\n";  
-		walker->DumpStmt(s);
+	if (!insideMain)
+	{
+		return false;
+	}
+
+	llvm::errs() << "Visiting statement\n";  
+	walker->DumpStmt(s);
 		
-		if (clang::isa<clang::Expr>(s))
+	if (clang::isa<clang::Expr>(s))
+	{
+		llvm::errs() << "\t Expression ";
+
+		//s->printPretty(llvm::errs, 
+		if (clang::isa<clang::BinaryOperator>(s)) 
 		{
-			llvm::errs() << "\t Expression";
-
-			//s->printPretty(llvm::errs, 
-			if (clang::isa<clang::BinaryOperator>(s)) 
+			llvm::errs() << ": binary operator: ";
+			BinaryOperator *binop = cast<BinaryOperator>(s);
+			if (cast<BinaryOperator>(s)->isAssignmentOp() == true) 
 			{
-				llvm::errs() << ": binary operator: ";
+				// blablabla
+				llvm::errs() << "assignment \n";
 
-				if (cast<BinaryOperator>(s)->isAssignmentOp() == true) 
+				Stmt *lhs = binop->getLHS();
+				if (isa<DeclRefExpr>(lhs))
 				{
-				  // blablabla
-					llvm::errs() << "assignment \n";
-				}
-			}
-			if (isa<clang::CXXNewExpr>(s))
-			{
-				llvm::errs() << ": new operator: ";
-				CXXNewExpr *newExpr = cast<CXXNewExpr>(s);
-				if (newExpr->isArray())
-				{
-					QualType qt = newExpr->getAllocatedType();
-					Expr *size = newExpr->getArraySize();
-
+					llvm::errs() << "\tto reference ";
+					DeclRefExpr *ref = cast<DeclRefExpr>(lhs);
+					DeclarationNameInfo nameInfo = ref->getNameInfo();
+					DeclarationName name = nameInfo.getName();
+					//name.dump();
+					string sname = name.getAsString();
+					llvm::errs() << sname;
 					
-					llvm::errs() << "array of " << qt.getAsString();
-
-					//size->dump( (errs);
-					//if (size->isConstantInitializer())
+					/*
+					if (variables.find(sname) == variables.end())
 					{
-
+						VersionedVariable vv(sname, "", VAR_POINTER, 0);
+						std::vector<VersionedVariable> vvvector;
+						vvvector.push_back(vv);
+						variables[sname] = vvvector;
+						//variables.insert(
 					}
-					
+					*/
+					++variables[sname];
+
+					//std::vector<VersionedVariable> &vvvector = variables[sname];
+
+					Stmt *rhs = binop->getRHS();
+					if (isa<CXXNewExpr>(rhs))
+					{
+						CXXNewExpr *newOp = cast<CXXNewExpr>(rhs);
+						if (newOp->isArray())
+						{
+							std::string type = "";
+							VersionedVariable vv(type, sname, VAR_ARRAY_POINTER, variables[sname]);
+							allocated.push_back(vv);
+						}
+						//־עלועטעü new.
+					}
+					if (isa<ImplicitCastExpr>(rhs))
+					{
+						ImplicitCastExpr *ice = cast<ImplicitCastExpr>(rhs);
+						Stmt *subexpr = ice->getSubExpr();
+						if (isa<DeclRefExpr>(subexpr))
+						{
+							//AddToSolver(sname, variables[sname], ...);
+						}
+					}
+
+					//ref->get
 				}
 			}
 		}
-        return true;
-}
 
-bool ESCAASTVisitor::VisitBinaryOperator(BinaryOperator* bo) 
-	{
-        if (bo->isAssignmentOp() == true) 
+		if (isa<clang::CXXNewExpr>(s))
 		{
-            llvm::errs() << "Visiting assignment ";
-            Expr *LHS;
-            LHS = bo->getLHS();
-            DeclRefExpr* dre;
-            if ((dre = dyn_cast<DeclRefExpr>(LHS))) { 
-                string name = (dre->getNameInfo()).getName().getAsString();
-                llvm::errs() << "to " << name;
-            }
-            if (ArraySubscriptExpr* ase = dyn_cast<ArraySubscriptExpr>(LHS)) { 
-                Expr *arrayBase = ase->getBase()->IgnoreParenCasts();
-                if ((dre = dyn_cast<DeclRefExpr>(arrayBase))) { 
-                    string name = (dre->getNameInfo()).getName().getAsString();
-                    llvm::errs() << "to array " << name;
-                }
-            }
-            llvm::errs() << "\n";
-        }
-        return true;
-    }
+			llvm::errs() << ": new operator: ";
+			CXXNewExpr *newExpr = cast<CXXNewExpr>(s);
+			if (newExpr->isArray())
+			{
+				QualType qt = newExpr->getAllocatedType();
+				Expr *size = newExpr->getArraySize();
 
-bool ESCAASTVisitor::shouldVisitTemplateInstantiations() const { 
-    llvm::errs() << "PIPPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << "\n";
-    return true; }
+					
+				llvm::errs() << "array of " << qt.getAsString();
 
-bool ESCAASTVisitor::VisitCXXOperatorCallExprs(CXXOperatorCallExpr *e) {
-    llvm::errs() << "Visiting cxxoperatorcall" << "\n";
+				//size->dump( (errs);
+				//if (size->isConstantInitializer())
+				{
+
+				}
+					
+			}
+		}
+	}
     return true;
 }
 
-bool ESCAASTVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *c) {
+bool ESCAASTVisitor::VisitBinaryOperator(BinaryOperator* bo) 
+{
+	if (!insideMain)
+	{
+		return false;
+	}
+
+    if (bo->isAssignmentOp() == true) 
+	{
+        llvm::errs() << "Visiting assignment ";
+        Expr *LHS;
+        LHS = bo->getLHS();
+        DeclRefExpr* dre;
+        if ((dre = dyn_cast<DeclRefExpr>(LHS))) { 
+            string name = (dre->getNameInfo()).getName().getAsString();
+            llvm::errs() << "to " << name;
+        }
+        if (ArraySubscriptExpr* ase = dyn_cast<ArraySubscriptExpr>(LHS)) { 
+            Expr *arrayBase = ase->getBase()->IgnoreParenCasts();
+            if ((dre = dyn_cast<DeclRefExpr>(arrayBase))) { 
+                string name = (dre->getNameInfo()).getName().getAsString();
+                llvm::errs() << "to array " << name;
+            }
+        }
+        llvm::errs() << "\n";
+    }
+    return true;
+}
+
+bool ESCAASTVisitor::shouldVisitTemplateInstantiations() const 
+{
+	if (!insideMain)
+	{
+		return false;
+	}
+
+    llvm::errs() << "PIPPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << "\n";
+    return true; 
+}
+
+bool ESCAASTVisitor::VisitCXXOperatorCallExprs(CXXOperatorCallExpr *e) 
+{
+	if (!insideMain)
+	{
+		return false;
+	}
+
+	llvm::errs() << "Visiting cxxoperatorcall" << "\n";
+    return true;
+}
+
+bool ESCAASTVisitor::VisitCXXConstructorDecl(CXXConstructorDecl *c) 
+{
+	if (!insideMain)
+	{
+		return false;
+	}
+
     llvm::errs() << "Visiting CXXConstructorDecl" << "\n";
     return true;        
 }
 
-bool ESCAASTVisitor::VisitDeclRefExpr(DeclRefExpr* expr) {
+bool ESCAASTVisitor::VisitDeclRefExpr(DeclRefExpr* expr) 
+{
+	if (!insideMain)
+	{
+		return false;
+	}
+
     string name = (expr->getNameInfo()).getName().getAsString();
     llvm::errs() << name << "\n";
     return true;
@@ -98,7 +190,12 @@ bool ESCAASTVisitor::VisitDeclRefExpr(DeclRefExpr* expr) {
 
 bool ESCAASTVisitor::VisitVarDecl(VarDecl *v) 
 {
-    llvm::errs() << "Visiting declaration of variable " << v->getDeclName().getAsString() << "\n";
+	if (!insideMain)
+	{
+		return false;
+	}
+
+	llvm::errs() << "Visiting declaration of variable " << v->getDeclName().getAsString() << "\n";
     llvm::errs() << "  type: " << v->getTypeSourceInfo()->getType().getTypePtr()->getTypeClassName();
     if (v->getTypeSourceInfo()->getType().getTypePtr()->isFloatingType() == true) 
 	{
@@ -123,14 +220,21 @@ bool ESCAASTVisitor::VisitVarDecl(VarDecl *v)
 
 bool ESCAASTVisitor::VisitTypedefDecl(clang::TypedefDecl *d) 
 {
-    llvm::errs() << "Visiting " << d->getDeclKindName() << " " << d->getName() << "\n";
+    //llvm::errs() << "Visiting " << d->getDeclKindName() << " " << d->getName() << "\n";
 
     return true; // returning false aborts the traversal        
 }
 
 bool ESCAASTVisitor::VisitFunctionDecl(FunctionDecl *f) 
 {
-    llvm::errs() << "Visiting function " << f->getNameInfo().getName().getAsString() << "\n";
+	string funName = f->getNameInfo().getName().getAsString();
+	if (funName != "main")
+	{
+		return false;
+	}
+
+	insideMain = true;
+    llvm::errs() << "Visiting function " << funName << "\n";
 	f->dump();
 
     return true;
