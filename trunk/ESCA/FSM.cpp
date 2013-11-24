@@ -53,7 +53,11 @@ int FSM::StateToLeaf(int leafId, const StateFSM &newState)
 			t.end = s.id;
 			t.id = GetNewTransitionID();
 			t.evt = TransitionFSM::EPSILON;
-			states[leafId].outgoing.push_back(t.id);
+			StateFSM &leaf = states[leafId];
+			leaf.outgoing.push_back(t.id);
+			//Move all the formulae from old leaf to new leaf.
+			s.formulae.insert(s.formulae.begin(), leaf.formulae.begin(), leaf.formulae.end());
+
 			states.push_back(s);
 			transitions.push_back(t);
 			//states.insert(pair<FSMID, StateFSM>(s.id, s));
@@ -61,7 +65,7 @@ int FSM::StateToLeaf(int leafId, const StateFSM &newState)
 			return 0;
 }
 
-void FSM::AddStateToLeaves(StateFSM s)
+void FSM::AddStateToLeaves(const StateFSM &s)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
@@ -120,7 +124,7 @@ void FSM::AddFormulaSMT(FormulaSMT *f)
 	}
 }
 
-void FSM::AddAllocPointer(VersionedVariable ap)
+void FSM::AddAllocPointer(const VersionedVariable &ap)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)

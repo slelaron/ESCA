@@ -15,7 +15,7 @@ class Variable
 	public:
 		Variable() {}
 		Variable(const Variable &v) { name = v.name; type = v.type; metaType = v.metaType; }
-		Variable (std::string t, std::string n, EMetaType mt) : name(n), type(t) { metaType = mt;}
+		Variable (const std::string &t, const std::string &n, EMetaType mt) : name(n), type(t) { metaType = mt;}
 
 		inline std::string Name() const { return name; }
 		inline std::string Type() const { return type; }

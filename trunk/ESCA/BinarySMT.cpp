@@ -4,6 +4,11 @@
 
 using namespace std;
 
+BinarySMT::BinarySMT(const VersionedVariable &l, const VersionedVariable &r, OperatorSMT o, bool n) : 
+FormulaSMT(), lhs(l), rhs(r), op(o), negation(n)
+{
+}
+
 string BinarySMT::FormatSMTLIB()
 {
 	string sop;

@@ -7,6 +7,10 @@
 
 #include "Variable.h"
 
+#include "FormulaSMT.h"
+#include "BinarySMT.h"
+#include "VariableSMT.h"
+
 using namespace clang;
 using namespace std;
 
@@ -221,7 +225,7 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 			//variables.insert(
 		}
 		*/
-		++variables[sname];
+		int lhsVer = ++variables[sname];
 
 		//std::vector<VersionedVariable> &vvvector = variables[sname];
 
@@ -249,10 +253,29 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 		{
 			ImplicitCastExpr *ice = cast<ImplicitCastExpr>(rhs);
 			Stmt *subexpr = ice->getSubExpr();
-			if (isa<DeclRefExpr>(subexpr))
+			if (isa<DeclRefExpr>(subexpr)) //pointer
 			{
+				auto rhsRefExpr = cast<DeclRefExpr>(subexpr);
+				string rhsPointer = rhsRefExpr->getNameInfo().getName().getAsString();
+				StateFSM state;
+				VersionedVariable lhsVar("", sname, VAR_POINTER, lhsVer);
+				VariableSMT *lhsForm = new VariableSMT();
+				lhsForm->Var(lhsVar);
+				state.formulae.push_back(lhsForm);
+
+				int rhsVer = variables[rhsPointer];
+				VersionedVariable rhsVar("", rhsPointer, VAR_POINTER, rhsVer);
+				VariableSMT *rhsForm = new VariableSMT();
+				rhsForm->Var(rhsVar);
+				state.formulae.push_back(rhsForm);
+
+				FormulaSMT *bs = new BinarySMT(lhsVar, rhsVar, EqualSMT, false);
+				state.formulae.push_back(bs);
+
+				fsm.AddStateToLeaves(state);
 				//AddToSolver(sname, variables[sname], ...);
 			}
+
 		}
 
 		//ref->get

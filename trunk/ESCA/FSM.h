@@ -32,8 +32,8 @@ class FSM
 {
 	public:
 		FSM();
-		inline void AddState(StateFSM s) { states[s.id] = s; }
-		inline void AddTransition(TransitionFSM trans) { transitions[trans.id] = trans; }
+		inline void AddState(const StateFSM &s) { states[s.id] = s; }
+		inline void AddTransition(const TransitionFSM &trans) { transitions[trans.id] = trans; }
 		bool GetState(FSMID id, StateFSM &s);
 		bool GetTransition(FSMID id, TransitionFSM &t);
 
@@ -41,10 +41,10 @@ class FSM
 		inline FSMID GetNewTransitionID() const { return transitions.size(); }
 
 		int StateToLeaf(int leafId, const StateFSM &s);
-		void AddStateToLeaves(StateFSM s);
+		void AddStateToLeaves(const StateFSM &s);
 		//void AddBranchToLeaves(StateFSM s);
 		void AddFormulaSMT(FormulaSMT *f); //Add SMT-formula to all leaves;
-		void AddAllocPointer(VersionedVariable ap);
+		void AddAllocPointer(const VersionedVariable &ap);
 		//void AddTransition(shared_ptr<StateFSM> begin, shared_ptr<StateFSM> end, shared_ptr<Tra)
 	private:
 		StatesStorage states;

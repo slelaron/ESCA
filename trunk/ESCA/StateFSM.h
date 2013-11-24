@@ -2,6 +2,7 @@
 #define STATEFSM_H
 
 #include <vector>
+#include <deque>
 
 #include "TypesFSM.h"
 #include "VersionedVariable.h"
@@ -25,7 +26,7 @@ class StateFSM
 		std::vector<VersionedVariable> allocArrays;
 		std::vector<VersionedVariable> delPointers;
 		std::vector<VersionedVariable> delArrays;
-		std::vector<FormulaSMT *> formulae;
+		std::deque<FormulaSMT *> formulae;
 };
 
 bool operator ==(const StateFSM &lhs, const StateFSM &rhs);
