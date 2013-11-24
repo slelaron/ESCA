@@ -19,7 +19,7 @@ class ASTWalker
 	public:
 		ASTWalker();
 		~ASTWalker();
-		inline void WalkAST() { WalkAST("D:\\Programming\\testcode\\test1_1.cpp"); }
+		inline void WalkAST() { WalkAST("D:\\Programming\\testcode\\test1_1_1.cpp"); }
 		void WalkAST(std::string path);
 
 	public:

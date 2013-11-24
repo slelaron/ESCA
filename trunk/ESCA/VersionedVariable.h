@@ -14,8 +14,13 @@ class VersionedVariable : public Variable
 
 		inline int Version() const { return version; }
 		inline std::string VersionedName() const { std::stringstream ss; ss << name << "!" << version; return ss.str(); }
+
+		//friend bool operator ==(const VersionedVariable &lhs, const VersionedVariable &rhs); 
+		//friend bool operator <(const VersionedVariable &lhs, const VersionedVariable &rhs); 
 	private:
 		int version;
 };
 
+bool operator ==(const VersionedVariable &lhs, const VersionedVariable &rhs); 
+bool operator <(const VersionedVariable &lhs, const VersionedVariable &rhs); 
 #endif

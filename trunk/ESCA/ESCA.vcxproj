@@ -39,6 +39,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -51,6 +53,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\Programming\Progz\llvm\build\include;D:\Programming\Progz\llvm\llvm\tools\clang\include;D:\Programming\Progz\llvm\build\tools\clang\include;D:\Programming\Progz\llvm\llvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <EnablePREfast>true</EnablePREfast>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -77,15 +80,30 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ASTWalker.cpp" />
+    <ClCompile Include="BinarySMT.cpp" />
     <ClCompile Include="ESCAASTConsumer.cpp" />
     <ClCompile Include="ESCAASTVisitor.cpp" />
+    <ClCompile Include="FSM.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="StateFSM.cpp" />
+    <ClCompile Include="TransitionFSM.cpp" />
+    <ClCompile Include="Variable.cpp" />
+    <ClCompile Include="VariableSMT.cpp" />
+    <ClCompile Include="VersionedVariable.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ASTWalker.h" />
+    <ClInclude Include="BinarySMT.h" />
     <ClInclude Include="ESCAASTConsumer.h" />
     <ClInclude Include="ESCAASTVisitor.h" />
+    <ClInclude Include="FormulaSMT.h" />
+    <ClInclude Include="FSM.h" />
+    <ClInclude Include="SMTSet.h" />
+    <ClInclude Include="StateFSM.h" />
+    <ClInclude Include="TransitionFSM.h" />
+    <ClInclude Include="TypesFSM.h" />
     <ClInclude Include="Variable.h" />
+    <ClInclude Include="VariableSMT.h" />
     <ClInclude Include="VersionedVariable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

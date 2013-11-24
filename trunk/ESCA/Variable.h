@@ -20,6 +20,9 @@ class Variable
 		inline std::string Name() const { return name; }
 		inline std::string Type() const { return type; }
 		inline EMetaType MetaType() const { return metaType; }
+		inline void MetaType(EMetaType mt) { metaType = mt; }
+
+		std::string TypeSMT() const;
 	protected:
 		std::string name;
 		std::string type;

@@ -35,58 +35,7 @@ bool ESCAASTVisitor::VisitStmt(clang::Stmt *s)
 			BinaryOperator *binop = cast<BinaryOperator>(s);
 			if (cast<BinaryOperator>(s)->isAssignmentOp() == true) 
 			{
-				// blablabla
-				llvm::errs() << "assignment \n";
-
-				Stmt *lhs = binop->getLHS();
-				if (isa<DeclRefExpr>(lhs))
-				{
-					llvm::errs() << "\tto reference ";
-					DeclRefExpr *ref = cast<DeclRefExpr>(lhs);
-					DeclarationNameInfo nameInfo = ref->getNameInfo();
-					DeclarationName name = nameInfo.getName();
-					//name.dump();
-					string sname = name.getAsString();
-					llvm::errs() << sname;
-					
-					/*
-					if (variables.find(sname) == variables.end())
-					{
-						VersionedVariable vv(sname, "", VAR_POINTER, 0);
-						std::vector<VersionedVariable> vvvector;
-						vvvector.push_back(vv);
-						variables[sname] = vvvector;
-						//variables.insert(
-					}
-					*/
-					++variables[sname];
-
-					//std::vector<VersionedVariable> &vvvector = variables[sname];
-
-					Stmt *rhs = binop->getRHS();
-					if (isa<CXXNewExpr>(rhs))
-					{
-						CXXNewExpr *newOp = cast<CXXNewExpr>(rhs);
-						if (newOp->isArray())
-						{
-							std::string type = "";
-							VersionedVariable vv(type, sname, VAR_ARRAY_POINTER, variables[sname]);
-							allocated.push_back(vv);
-						}
-						//־עלועטעü new.
-					}
-					if (isa<ImplicitCastExpr>(rhs))
-					{
-						ImplicitCastExpr *ice = cast<ImplicitCastExpr>(rhs);
-						Stmt *subexpr = ice->getSubExpr();
-						if (isa<DeclRefExpr>(subexpr))
-						{
-							//AddToSolver(sname, variables[sname], ...);
-						}
-					}
-
-					//ref->get
-				}
+				ProcessAssignment(binop);
 			}
 		}
 
@@ -127,13 +76,16 @@ bool ESCAASTVisitor::VisitBinaryOperator(BinaryOperator* bo)
         Expr *LHS;
         LHS = bo->getLHS();
         DeclRefExpr* dre;
-        if ((dre = dyn_cast<DeclRefExpr>(LHS))) { 
+        if ((dre = dyn_cast<DeclRefExpr>(LHS))) 
+		{ 
             string name = (dre->getNameInfo()).getName().getAsString();
             llvm::errs() << "to " << name;
         }
-        if (ArraySubscriptExpr* ase = dyn_cast<ArraySubscriptExpr>(LHS)) { 
+        if (ArraySubscriptExpr* ase = dyn_cast<ArraySubscriptExpr>(LHS)) 
+		{ 
             Expr *arrayBase = ase->getBase()->IgnoreParenCasts();
-            if ((dre = dyn_cast<DeclRefExpr>(arrayBase))) { 
+            if ((dre = dyn_cast<DeclRefExpr>(arrayBase))) 
+			{ 
                 string name = (dre->getNameInfo()).getName().getAsString();
                 llvm::errs() << "to array " << name;
             }
@@ -195,6 +147,8 @@ bool ESCAASTVisitor::VisitVarDecl(VarDecl *v)
 		return false;
 	}
 
+	return ProcessDeclaration(v);
+
 	llvm::errs() << "Visiting declaration of variable " << v->getDeclName().getAsString() << "\n";
     llvm::errs() << "  type: " << v->getTypeSourceInfo()->getType().getTypePtr()->getTypeClassName();
     if (v->getTypeSourceInfo()->getType().getTypePtr()->isFloatingType() == true) 
@@ -212,6 +166,7 @@ bool ESCAASTVisitor::VisitVarDecl(VarDecl *v)
     if(v->getTypeSourceInfo()->getType().getTypePtr()->isPointerType() == true) 
 	{
         llvm::errs() << " to " << v->getTypeSourceInfo()->getType().getAsString();
+
 
     }
     llvm::errs() << "\n";
@@ -238,4 +193,145 @@ bool ESCAASTVisitor::VisitFunctionDecl(FunctionDecl *f)
 	f->dump();
 
     return true;
+}
+
+bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
+{
+	// blablabla
+	llvm::errs() << "assignment \n";
+
+	Stmt *lhs = binop->getLHS();
+	if (isa<DeclRefExpr>(lhs))
+	{
+		llvm::errs() << "\tto reference ";
+		DeclRefExpr *ref = cast<DeclRefExpr>(lhs);
+		DeclarationNameInfo nameInfo = ref->getNameInfo();
+		DeclarationName name = nameInfo.getName();
+		//name.dump();
+		string sname = name.getAsString();
+		llvm::errs() << sname;
+					
+		/*
+		if (variables.find(sname) == variables.end())
+		{
+			VersionedVariable vv(sname, "", VAR_POINTER, 0);
+			std::vector<VersionedVariable> vvvector;
+			vvvector.push_back(vv);
+			variables[sname] = vvvector;
+			//variables.insert(
+		}
+		*/
+		++variables[sname];
+
+		//std::vector<VersionedVariable> &vvvector = variables[sname];
+
+		Stmt *rhs = binop->getRHS();
+		if (isa<CXXNewExpr>(rhs))
+		{
+			CXXNewExpr *newOp = cast<CXXNewExpr>(rhs);
+			StateFSM state;
+			std::string type = "";
+			VersionedVariable vv(type, sname, VAR_POINTER, variables[sname]);
+			if (newOp->isArray())
+			{
+				vv.MetaType(VAR_ARRAY_POINTER);
+				state.allocArrays.push_back(vv);
+			}
+			else
+			{
+				state.allocPointers.push_back(vv);
+			}
+			//־עלועטעü new.
+			allocated.push_back(vv);
+			fsm.AddStateToLeaves(state);
+		}
+		if (isa<ImplicitCastExpr>(rhs))
+		{
+			ImplicitCastExpr *ice = cast<ImplicitCastExpr>(rhs);
+			Stmt *subexpr = ice->getSubExpr();
+			if (isa<DeclRefExpr>(subexpr))
+			{
+				//AddToSolver(sname, variables[sname], ...);
+			}
+		}
+
+		//ref->get
+	}
+	return true;
+}
+
+bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
+{
+	llvm::errs() << "\n\n";
+	vd->dump();
+	llvm::errs() << "isBlockPointerType: " 
+	<< vd->getTypeSourceInfo()->getType().getTypePtr()->isBlockPointerType() 
+	<< "\n";
+
+	llvm::errs() << "isAggregateType: " 
+		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isAggregateType() 
+	<< "\n";
+
+	llvm::errs() << "isAnyComplexType: " 
+		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyComplexType() 
+	<< "\n";
+
+	llvm::errs() << "isArrayType: " 
+		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isArrayType() 
+	<< "\n";
+
+	llvm::errs() << "isDependentSizedArrayType: " 
+		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isDependentSizedArrayType() 
+	<< "\n";
+
+	llvm::errs() << "isIntegerType: " 
+		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isIntegerType() 
+	<< "\n";
+
+	llvm::errs() <<"type: " << vd->getTypeSourceInfo()->getType().getAsString();
+
+	llvm::errs() << "\n\n";
+
+	if (vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyPointerType())
+	{
+		auto name = vd->getNameAsString();
+		auto iter = variables.find(name);
+		if (iter != variables.end())
+		{
+			//Error: this variable is already declared.
+			llvm::errs() << "Variable with name " << name << " declared twice\n";
+			return true;
+		}
+		variables[name] = 1;
+
+		auto init = vd->getAnyInitializer();
+		if (init == 0)
+		{
+			return true;
+		}
+		if (!isa<CXXNewExpr>(init))
+		{
+			return 0;
+		}
+
+		auto newExpr = cast<CXXNewExpr>(init);
+		
+
+		StateFSM state;
+		std::string type = "";
+		VersionedVariable vv(type, name, VAR_POINTER, 1);
+
+		if(newExpr->isArray()) //Declaration of array
+		{
+			vv.MetaType(VAR_ARRAY_POINTER);
+			state.allocArrays.push_back(vv);
+		}
+		else
+		{
+			state.allocPointers.push_back(vv);
+		}
+		allocated.push_back(vv);
+		fsm.AddStateToLeaves(state);
+	}
+	return true;
 }

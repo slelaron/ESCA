@@ -9,6 +9,7 @@
 #include <clang/AST/Decl.h>
 
 #include "VersionedVariable.h"
+#include "FSM.h"
 
 class ASTWalker;
 
@@ -29,6 +30,11 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 
 	public:
 		inline void SetWalker(ASTWalker *ast_walker) { walker = ast_walker; }
+
+	private:
+		bool ProcessAssignment(clang::BinaryOperator *binop);
+		bool ProcessDeclaration(clang::VarDecl *vd);
+
 	private:
 		ASTWalker *walker;
 
@@ -37,5 +43,6 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 		//std::map<std::string, std::vector<VersionedVariable> > variables;
 		std::map<std::string, int> variables;
 		std::vector<VersionedVariable> allocated;
+		FSM fsm;
 };
 #endif
