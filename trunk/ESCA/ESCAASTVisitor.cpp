@@ -1,4 +1,5 @@
 #include <string>
+#include <memory>
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -62,6 +63,12 @@ bool ESCAASTVisitor::VisitStmt(clang::Stmt *s)
 				}
 					
 			}
+		}
+
+		if (isa<CXXDeleteExpr>(s))
+		{
+			llvm::errs() << "delete!\n"; 
+			ProcessDelete(cast<CXXDeleteExpr>(s));
 		}
 	}
     return true;
@@ -225,7 +232,9 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 			//variables.insert(
 		}
 		*/
-		int lhsVer = ++variables[sname];
+		//int lhsVer = ++variables[sname];
+		PtrCounter &lhsCnt = variables[sname];
+		int lhsVer = ++(lhsCnt.count);
 
 		//std::vector<VersionedVariable> &vvvector = variables[sname];
 
@@ -235,15 +244,17 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 			CXXNewExpr *newOp = cast<CXXNewExpr>(rhs);
 			StateFSM state;
 			std::string type = "";
-			VersionedVariable vv(type, sname, VAR_POINTER, variables[sname]);
+			VersionedVariable vv(type, sname, VAR_POINTER, lhsCnt.count);
 			if (newOp->isArray())
 			{
 				vv.MetaType(VAR_ARRAY_POINTER);
 				state.allocArrays.push_back(vv);
+				lhsCnt.meta = VAR_ARRAY_POINTER;
 			}
 			else
 			{
 				state.allocPointers.push_back(vv);
+				lhsCnt.meta = VAR_POINTER;
 			}
 			//־עלועטעü new.
 			allocated.push_back(vv);
@@ -259,17 +270,24 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 				string rhsPointer = rhsRefExpr->getNameInfo().getName().getAsString();
 				StateFSM state;
 				VersionedVariable lhsVar("", sname, VAR_POINTER, lhsVer);
-				VariableSMT *lhsForm = new VariableSMT();
+				//VariableSMT *lhsForm = new VariableSMT();
+				shared_ptr<VariableSMT> lhsForm(new VariableSMT());
 				lhsForm->Var(lhsVar);
 				state.formulae.push_back(lhsForm);
 
-				int rhsVer = variables[rhsPointer];
+				PtrCounter &rhsCnt = variables[rhsPointer];
+				int rhsVer = rhsCnt.count;
 				VersionedVariable rhsVar("", rhsPointer, VAR_POINTER, rhsVer);
-				VariableSMT *rhsForm = new VariableSMT();
+				//VariableSMT *rhsForm = new VariableSMT();				
+				shared_ptr<VariableSMT> rhsForm(new VariableSMT());
 				rhsForm->Var(rhsVar);
 				state.formulae.push_back(rhsForm);
+				lhsCnt.meta = rhsCnt.meta;
 
-				FormulaSMT *bs = new BinarySMT(lhsVar, rhsVar, EqualSMT, false);
+				shared_ptr<VariableSMT> leftForm(new VariableSMT);
+				leftForm->Var(lhsVar);
+				state.formulae.push_back(leftForm);
+				shared_ptr<FormulaSMT> bs(new BinarySMT(lhsVar, rhsVar, EqualSMT, false));
 				state.formulae.push_back(bs);
 
 				fsm.AddStateToLeaves(state);
@@ -325,7 +343,11 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
 			llvm::errs() << "Variable with name " << name << " declared twice\n";
 			return true;
 		}
-		variables[name] = 1;
+		PtrCounter ptrCnt;
+		ptrCnt.count = 0;
+		ptrCnt.meta = VAR_POINTER;
+		//variables[name] = ptrCnt;
+		auto cntIter = variables.insert(pair<string, PtrCounter>(name, ptrCnt));
 
 		auto init = vd->getAnyInitializer();
 		if (init == 0)
@@ -337,6 +359,8 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
 			return 0;
 		}
 
+		++cntIter.first->second.count;
+
 		auto newExpr = cast<CXXNewExpr>(init);
 		
 
@@ -347,6 +371,7 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
 		if(newExpr->isArray()) //Declaration of array
 		{
 			vv.MetaType(VAR_ARRAY_POINTER);
+			cntIter.first->second.meta = VAR_ARRAY_POINTER;
 			state.allocArrays.push_back(vv);
 		}
 		else
@@ -354,7 +379,41 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
 			state.allocPointers.push_back(vv);
 		}
 		allocated.push_back(vv);
+
+		shared_ptr<VariableSMT> vvForm(new VariableSMT());
+		vvForm->Var(vv);
+		state.formulae.push_back(vvForm);
+
 		fsm.AddStateToLeaves(state);
+	}
+	return true;
+}
+
+bool ESCAASTVisitor::ProcessDelete(clang::CXXDeleteExpr *del)
+{
+	auto argDel = del->getArgument();
+	//TODO: change this if by function that gives a full name of pointer or null when there is no pointer.
+	if (isa<ImplicitCastExpr>(argDel))
+	{
+		auto delCast = cast<ImplicitCastExpr>(argDel);
+		auto dexpr = delCast->getSubExpr();
+		if (isa<DeclRefExpr>(dexpr))
+		{
+			auto dptr = cast<DeclRefExpr>(dexpr);
+			string name = dptr->getNameInfo().getAsString();
+			//StateFSM state;
+			std::string type = "";
+			auto cntIter = variables.find(name);
+			if (cntIter == variables.end())
+			{
+				llvm::errs() << "We delete undeclated variable!\n";
+				return false;
+			}
+			VersionedVariable vv(type, name, cntIter->second.meta, cntIter->second.count);
+			llvm::errs() << "isArrayForm: " << del->isArrayForm() << " isArrayFormAsWritten: " 
+				<< del->isArrayFormAsWritten() << "\n";
+			fsm.AddDeleteState(vv, del->isArrayForm());
+		}
 	}
 	return true;
 }

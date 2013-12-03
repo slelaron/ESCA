@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <deque>
+#include <memory>
+#include <string>
 
 #include "TypesFSM.h"
 #include "VersionedVariable.h"
@@ -15,10 +17,7 @@ class StateFSM
 {
 	public:
 		~StateFSM();
-	//private:
 		FSMID id;
-		//std::vector<TransitionFSM *> incoming;
-		//std::vector<TransitionFSM *> outgoing;
 		std::vector<FSMID> incoming;
 		std::vector<FSMID> outgoing;
 
@@ -26,7 +25,11 @@ class StateFSM
 		std::vector<VersionedVariable> allocArrays;
 		std::vector<VersionedVariable> delPointers;
 		std::vector<VersionedVariable> delArrays;
-		std::deque<FormulaSMT *> formulae;
+		std::deque<std::shared_ptr<FormulaSMT> > formulae;
+
+	public:
+		std::string PrintFormulae();
+		std::string PrintFormulaeSat();
 };
 
 bool operator ==(const StateFSM &lhs, const StateFSM &rhs);

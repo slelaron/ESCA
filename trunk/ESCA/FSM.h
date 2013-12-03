@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <memory>
 /*
 #ifdef _MSC_VER
 #if _MSC_VER == 1600
@@ -43,12 +44,14 @@ class FSM
 		int StateToLeaf(int leafId, const StateFSM &s);
 		void AddStateToLeaves(const StateFSM &s);
 		//void AddBranchToLeaves(StateFSM s);
-		void AddFormulaSMT(FormulaSMT *f); //Add SMT-formula to all leaves;
+		void AddFormulaSMT(const std::shared_ptr<FormulaSMT> &f); //Add SMT-formula to all leaves;
 		void AddAllocPointer(const VersionedVariable &ap);
 		//void AddTransition(shared_ptr<StateFSM> begin, shared_ptr<StateFSM> end, shared_ptr<Tra)
+		void AddDeleteState(const VersionedVariable &var, bool arrayForm);
 	private:
 		StatesStorage states;
 		TransitionsStorage transitions;
+		int iSat;
 };
 
 #endif

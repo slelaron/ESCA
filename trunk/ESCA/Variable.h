@@ -7,7 +7,8 @@ enum EMetaType
 {
 	VAR_COMMON,
 	VAR_POINTER,
-	VAR_ARRAY_POINTER
+	VAR_ARRAY_POINTER,
+	VAR_UNKNOWN,
 };
 
 class Variable

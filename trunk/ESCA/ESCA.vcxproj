@@ -83,6 +83,7 @@
     <ClCompile Include="BinarySMT.cpp" />
     <ClCompile Include="ESCAASTConsumer.cpp" />
     <ClCompile Include="ESCAASTVisitor.cpp" />
+    <ClCompile Include="ExecSolver.cpp" />
     <ClCompile Include="FSM.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="StateFSM.cpp" />
@@ -96,8 +97,10 @@
     <ClInclude Include="BinarySMT.h" />
     <ClInclude Include="ESCAASTConsumer.h" />
     <ClInclude Include="ESCAASTVisitor.h" />
+    <ClInclude Include="ExecSolver.h" />
     <ClInclude Include="FormulaSMT.h" />
     <ClInclude Include="FSM.h" />
+    <ClInclude Include="PtrCounter.h" />
     <ClInclude Include="SMTSet.h" />
     <ClInclude Include="StateFSM.h" />
     <ClInclude Include="TransitionFSM.h" />

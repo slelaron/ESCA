@@ -10,6 +10,7 @@
 
 #include "VersionedVariable.h"
 #include "FSM.h"
+#include "PtrCounter.h"
 
 class ASTWalker;
 
@@ -34,6 +35,7 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 	private:
 		bool ProcessAssignment(clang::BinaryOperator *binop);
 		bool ProcessDeclaration(clang::VarDecl *vd);
+		bool ProcessDelete(clang::CXXDeleteExpr *del);
 
 	private:
 		ASTWalker *walker;
@@ -41,7 +43,9 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 		bool insideMain;
 
 		//std::map<std::string, std::vector<VersionedVariable> > variables;
-		std::map<std::string, int> variables;
+		//std::map<std::string, int> variables;
+		std::map<std::string, PtrCounter> variables;
+
 		std::vector<VersionedVariable> allocated;
 		FSM fsm;
 };
