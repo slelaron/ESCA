@@ -4,7 +4,7 @@ StateFSM::~StateFSM()
 {
 }
 
-std::string StateFSM::PrintFormulae()
+std::string FormulaeToString(const std::deque<std::shared_ptr<FormulaSMT> > &formulae)
 {
 	auto size = formulae.size();
 	std::string res("");
@@ -14,10 +14,20 @@ std::string StateFSM::PrintFormulae()
 	}
 	return res;
 }
+std::string FormulaeToStringSat(const std::deque<std::shared_ptr<FormulaSMT> > &formulae)
+{
+	return FormulaeToString(formulae) + "(check-sat)\n";
+}
+
+
+std::string StateFSM::PrintFormulae()
+{
+	return FormulaeToString(formulae);
+}
 
 std::string StateFSM::PrintFormulaeSat()
 {
-	return PrintFormulae() + "(check-sat)\n";
+	return FormulaeToStringSat(formulae);
 }
 
 

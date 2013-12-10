@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClCompile Include="ASTWalker.cpp" />
     <ClCompile Include="BinarySMT.cpp" />
+    <ClCompile Include="DefectStorage.cpp" />
     <ClCompile Include="ESCAASTConsumer.cpp" />
     <ClCompile Include="ESCAASTVisitor.cpp" />
     <ClCompile Include="ExecSolver.cpp" />
@@ -95,6 +96,7 @@
   <ItemGroup>
     <ClInclude Include="ASTWalker.h" />
     <ClInclude Include="BinarySMT.h" />
+    <ClInclude Include="DefectStorage.h" />
     <ClInclude Include="ESCAASTConsumer.h" />
     <ClInclude Include="ESCAASTVisitor.h" />
     <ClInclude Include="ExecSolver.h" />

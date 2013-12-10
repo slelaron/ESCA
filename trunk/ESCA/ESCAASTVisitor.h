@@ -19,24 +19,21 @@ class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 	public:
 		ESCAASTVisitor();
 	public:
-		bool VisitStmt(clang::Stmt *s);
-		bool VisitBinaryOperator(clang::BinaryOperator* bo);
-		bool shouldVisitTemplateInstantiations() const;
-		bool VisitCXXOperatorCallExprs(clang::CXXOperatorCallExpr *e);
-		bool VisitCXXConstructorDecl(clang::CXXConstructorDecl *c);
-		bool VisitDeclRefExpr(clang::DeclRefExpr* expr);
-		bool VisitVarDecl(clang::VarDecl *v);
-		bool VisitTypedefDecl(clang::TypedefDecl *d);
 		bool VisitFunctionDecl(clang::FunctionDecl *f);
 
 	public:
 		inline void SetWalker(ASTWalker *ast_walker) { walker = ast_walker; }
 
 	private:
+		bool ProcessStmt(clang::Stmt *stmt);
+		bool ProcessCompound(clang::CompoundStmt *body);
 		bool ProcessAssignment(clang::BinaryOperator *binop);
 		bool ProcessDeclaration(clang::VarDecl *vd);
 		bool ProcessDelete(clang::CXXDeleteExpr *del);
-
+		bool ProcessReturn(clang::ReturnStmt *ret);
+		bool ProcessIf(clang::IfStmt *ifstmt);
+		bool ProcessReturnNone(clang::ReturnStmt *ret); //Pointers are not returned.
+		bool ProcessReturnPtr(clang::ReturnStmt *ret); //Pointers are returned.
 	private:
 		ASTWalker *walker;
 

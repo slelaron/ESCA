@@ -10,26 +10,33 @@
 #include "VersionedVariable.h"
 #include "FormulaSMT.h"
 
+typedef std::vector<VersionedVariable> VarStorage;
+typedef std::deque<std::shared_ptr<FormulaSMT> > FormulaStorage;
+typedef std::string ConditionEvent;
 
 //class TransitionFSM;
+std::string FormulaeToString(const std::deque<std::shared_ptr<FormulaSMT> > &formulae);
+std::string FormulaeToStringSat(const std::deque<std::shared_ptr<FormulaSMT> > &formulae);
 
 class StateFSM
 {
 	public:
+		StateFSM() : isEnd(false) {}
 		~StateFSM();
 		FSMID id;
 		std::vector<FSMID> incoming;
 		std::vector<FSMID> outgoing;
 
-		std::vector<VersionedVariable> allocPointers;
-		std::vector<VersionedVariable> allocArrays;
-		std::vector<VersionedVariable> delPointers;
-		std::vector<VersionedVariable> delArrays;
-		std::deque<std::shared_ptr<FormulaSMT> > formulae;
-
+		VarStorage allocPointers;
+		VarStorage allocArrays;
+		VarStorage delPointers;
+		VarStorage delArrays;
+		FormulaStorage formulae;
+		bool isEnd;
 	public:
 		std::string PrintFormulae();
 		std::string PrintFormulaeSat();
+		inline bool IsLeaf() const { return (!isEnd) && outgoing.empty(); }
 };
 
 bool operator ==(const StateFSM &lhs, const StateFSM &rhs);

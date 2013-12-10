@@ -7,6 +7,7 @@ using namespace std;
 
 const std::string ExecSolver::CommandLine("z3 /smt2 ");
 
+//Execution example: http://stackoverflow.com/questions/478898/how-to-execute-a-command-and-get-output-of-command-within-c 
 string ExecSolver::Run(std::string file)
 {
 	string cmd = CommandLine + file;
