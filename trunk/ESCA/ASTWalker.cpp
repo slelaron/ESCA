@@ -157,7 +157,7 @@ void ASTWalker::WalkAST(string path)
 	*/
    //MyASTConsumer astConsumer;
 
-
+	astConsumer->SetPath(path);
     pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
     clang::ParseAST(preprocessor, astConsumer, *astContext);
     pTextDiagnosticPrinter->EndSourceFile();

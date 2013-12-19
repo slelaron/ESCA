@@ -21,7 +21,7 @@ std::string FormulaeToStringSat(const std::deque<std::shared_ptr<FormulaSMT> > &
 class StateFSM
 {
 	public:
-		StateFSM() : isEnd(false) {}
+		StateFSM() : isEnd(false), isBranchLeaf(false) {}
 		~StateFSM();
 		FSMID id;
 		std::vector<FSMID> incoming;
@@ -33,6 +33,7 @@ class StateFSM
 		VarStorage delArrays;
 		FormulaStorage formulae;
 		bool isEnd;
+		bool isBranchLeaf; //Former leaf in which there is 
 	public:
 		std::string PrintFormulae();
 		std::string PrintFormulaeSat();

@@ -86,7 +86,9 @@
     <ClCompile Include="ESCAASTVisitor.cpp" />
     <ClCompile Include="ExecSolver.cpp" />
     <ClCompile Include="FSM.cpp" />
+    <ClCompile Include="FSMStorage.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PathStorage.cpp" />
     <ClCompile Include="StateFSM.cpp" />
     <ClCompile Include="TransitionFSM.cpp" />
     <ClCompile Include="Variable.cpp" />
@@ -102,6 +104,9 @@
     <ClInclude Include="ExecSolver.h" />
     <ClInclude Include="FormulaSMT.h" />
     <ClInclude Include="FSM.h" />
+    <ClInclude Include="FSMStorage.h" />
+    <ClInclude Include="LeafPredicate.h" />
+    <ClInclude Include="PathStorage.h" />
     <ClInclude Include="PtrCounter.h" />
     <ClInclude Include="SMTSet.h" />
     <ClInclude Include="StateFSM.h" />

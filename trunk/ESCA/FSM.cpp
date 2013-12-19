@@ -26,9 +26,25 @@ std::string PrintSMT(int iSat, const FormulaStorage &f)
 
 FSM::FSM() : iSat(0)
 {
+	CreateStart();
+}
+
+void FSM::CreateStart()
+{
 	StateFSM start;
 	start.id = 0;
 	states.push_back(start);
+}
+
+void FSM::Reset()
+{
+	SaveToXML();
+	StatesStorage().swap(states);
+	TransitionsStorage().swap(transitions);
+	events.clear();
+	iSat = 0;
+	string().swap(functionName);
+	CreateStart();
 }
 
 bool FSM::GetState(FSMID id, StateFSM &s) 
@@ -65,15 +81,21 @@ bool MoveVector(vector<T> &source, vector<T> &dst)
 
 int FSM::StateToLeaf(int leafId, const StateFSM &newState)
 {
+	return StateToLeaf(leafId, newState, TransitionFSM::EPSILON);
+}
+
+int FSM::StateToLeaf(int leafId, const StateFSM &newState, const std::string &pred)
+{
 	StateFSM s = newState;
 	TransitionFSM t;
 	t.start = leafId;
 	s.id = GetNewStateID();
 	t.end = s.id;
 	t.id = GetNewTransitionID();
-	t.evt = TransitionFSM::EPSILON;
+	t.evt = pred;
 	StateFSM &leaf = states[leafId];
 	leaf.outgoing.push_back(t.id);
+	s.incoming.push_back(t.id);
 	//Move all the formulae from old leaf to new leaf.
 	s.formulae.insert(s.formulae.begin(), leaf.formulae.begin(), leaf.formulae.end());
 	leaf.formulae.clear();
@@ -90,16 +112,26 @@ int FSM::StateToLeaf(int leafId, const StateFSM &newState)
 	return s.id;
 }
 
-void FSM::AddStateToLeaves(const StateFSM &s)
+
+
+void FSM::AddStateToLeaves(const StateFSM &s, LeafPredicate &pred)
+{
+	AddStateToLeaves(s, pred, TransitionFSM::EPSILON, true);
+}
+
+//TODO: Refactor this function!
+void FSM::AddStateToLeaves(const StateFSM &s, LeafPredicate &pred, const std::string &cond, bool finCond)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
 	{
-		if (states[i].IsLeaf())
+		//if (states[i].IsLeaf())
+		if (pred(states[i]))
 		{
 			if (MatchEvents(i)) //This is an expensive check, so we want perform it when other conditions are checked.
 			{
-				StateToLeaf(i, s);
+				states[i].isBranchLeaf = !finCond;
+				StateToLeaf(i, s, cond);
 			}
 		}
 	}
@@ -299,6 +331,17 @@ void FSM::CreateNewRetNoneState(StateFSM &leaf)
 	//Note:This may be parallelized
 	SolveRet(true, s);
 	SolveRet(false, s);
+
+	//Add s to FSM.
+	TransitionFSM tr;
+	tr.id = GetNewTransitionID();
+	tr.start = leaf.id;
+	tr.end = s.id;
+	leaf.outgoing.push_back(tr.id);
+	transitions.push_back(tr);
+	s.incoming.push_back(tr.id);
+	s.isEnd = true;
+	states.push_back(s);
 	
 }
 
@@ -306,7 +349,8 @@ bool FSM::MatchEvents(FSMID stateID)
 {
 	//ConditionStorage events = states[stateID].events;
 	int cur = stateID;
-	while (!events.empty())
+	auto localEvents = events;
+	while (!localEvents.empty())
 	{
 		if (states[cur].incoming.empty()) //start state.
 		{
@@ -315,16 +359,148 @@ bool FSM::MatchEvents(FSMID stateID)
 		auto trID = states[cur].incoming[0]; //in the current model there is one parent of each state.
 		TransitionFSM &tr = transitions[trID];
 		auto parent = tr.start;
-		if (!events.empty())
+		if (!localEvents.empty())
 		{
 			if (tr.evt != TransitionFSM::EPSILON)
 			{
-				if (tr.evt != events.back())
+				if (tr.evt != localEvents.back())
 				{
 					return false;
 				}
 			}
 		}
+		cur = parent;
+		localEvents.pop_back();
 	}
 	return true;
+}
+
+//debug
+void FSM::SaveToXML()
+{
+	string path = functionName;
+	if (path.empty())
+	{
+		path = "defaultFunction";
+	}
+	path += ".xstd";
+	SaveToXML(path);
+}
+
+namespace
+{
+	int indent;
+	string DoIndent()
+	{
+		string res = "";
+		for (int i = 0; i < indent; ++i)
+		{
+			res.push_back('\t');
+		}
+		return res;
+	}
+
+	string CnvStateId(FSMID id)
+	{
+		stringstream res;
+		res << (id * 2);
+		return res.str();
+	}
+
+	string CnvTransitionId(FSMID id)
+	{
+		stringstream res;
+		res << (id * 2 + 1);
+		return res.str();
+	}
+}
+
+void FSM::SaveToXML(const std::string &path)
+{
+	ofstream outf(path);
+	if (!outf.good())
+	{
+		return;
+	}
+
+	outf << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" << endl;
+	outf << "<diagram>" << endl;
+
+	++indent;
+	outf << DoIndent() << "<name>" << functionName << "</name>" << endl;
+
+	outf << DoIndent() << "<data>" << endl;
+	++indent;
+	outf << DoIndent() << "<Statemachine>" << endl;
+
+	++indent;
+	for (auto iter = events.begin(); iter != events.end(); ++iter)
+	{
+		outf << DoIndent() << "<event name=\"" << *iter << "\" comment=\"\"/>" << endl;
+	}
+	outf << DoIndent() << "<autoreject>False</autoreject>" << endl;
+	--indent;
+
+	outf << DoIndent() << "</Statemachine>" << endl;
+	--indent;
+	outf << DoIndent() << "</data>" << endl;
+	--indent;
+
+	llvm::errs() << "States: ";
+
+	for (auto iter = states.begin(); iter != states.end(); ++iter)
+	{
+		outf << DoIndent() << "<widget id=\"" << CnvStateId(iter->id) << "\" type=\"State\">" << endl;
+		++indent;
+		outf << DoIndent() << "<attributes>" << endl;
+		++indent;
+		outf << DoIndent() << "<name>state" << iter->id << "</name>" << endl;
+		outf << DoIndent() << "<type>";
+		if (iter->id)
+		{
+			//llvm::errs() << ((iter->isEnd) ? "0 " : "2 ");
+			outf << ((!iter->isEnd) ? "0 " : "2 ");
+		} 
+		else
+		{
+			llvm::errs() << "1 ";
+
+			outf << "1";
+		}
+		outf << "</type>" << endl;
+
+		for (auto income = iter->incoming.begin(); income != iter->incoming.end(); ++income)
+		{
+			outf << DoIndent() << "<incoming id=\"" << CnvTransitionId(*income) << "\"/>" << endl;
+		}
+
+		for (auto outg = iter->outgoing.begin(); outg != iter->outgoing.end(); ++outg)
+		{
+			outf << DoIndent() << "<outgoing id=\"" << CnvTransitionId(*outg) << "\"/>" << endl;
+		}
+
+		--indent;
+		outf << DoIndent() << "</attributes>" << endl;
+		--indent;
+		outf << DoIndent() << "</widget>" << endl;
+	}
+	llvm::errs() << "\n";
+
+
+	for (auto iter = transitions.begin(); iter != transitions.end(); ++iter)
+	{
+		outf << "<widget id=\"" << CnvTransitionId(iter->id) << "\" type=\"Transition\">" << endl;
+		++indent;
+		outf << DoIndent() << "<attributes>" << endl;
+		++indent;
+		outf << DoIndent() << "<event name=\"" << iter->evt << "\" comment=\"\" />" << endl;
+		--indent;
+		outf << DoIndent() << "</attributes>" << endl;
+		--indent;
+		outf << DoIndent() << "</widget>" << endl;
+	}
+
+	outf << "</diagram>" << endl;
+
+	outf.close();
 }

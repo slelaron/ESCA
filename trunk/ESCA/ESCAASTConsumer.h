@@ -1,6 +1,8 @@
 #ifndef ESCAASTConsumer_h
 #define ESCAASTConsumer_h
 
+#include <string>
+
 #include <clang/AST/ASTConsumer.h>
 #include <clang/AST/DeclGroup.h>
 
@@ -17,6 +19,7 @@ class ESCAASTConsumer : public clang::ASTConsumer
 
 	public:
 		inline void SetWalker(ASTWalker *walker) { visitor.SetWalker(walker); }
+		inline void SetPath(const std::string &path) { visitor.SetPath(path); }
 	private:
 		ESCAASTVisitor visitor;
 };

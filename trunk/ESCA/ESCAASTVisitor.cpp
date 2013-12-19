@@ -3,6 +3,7 @@
 
 #include <llvm/Support/raw_ostream.h>
 #include <clang/AST/PrettyPrinter.h>
+#include <clang/AST/ASTContext.h>
 
 #include "ESCAASTVisitor.h"
 #include "ASTWalker.h"
@@ -12,11 +13,12 @@
 #include "FormulaSMT.h"
 #include "BinarySMT.h"
 #include "VariableSMT.h"
+#include "PathStorage.h"
 
 using namespace clang;
 using namespace std;
 
-ESCAASTVisitor::ESCAASTVisitor() : walker(0), insideMain(false)
+ESCAASTVisitor::ESCAASTVisitor() : walker(0), path(new PathStorage)
 {
 }
 
@@ -24,35 +26,62 @@ ESCAASTVisitor::ESCAASTVisitor() : walker(0), insideMain(false)
 
 bool ESCAASTVisitor::VisitFunctionDecl(FunctionDecl *f) 
 {
+	return ProcessFunction(f);
+}
+
+bool ESCAASTVisitor::ProcessFunction(clang::FunctionDecl *f)
+{
 	string funName = f->getNameInfo().getName().getAsString();
-	if (funName != "main")
+	fsm.FunctionName(funName);
+	
+	llvm::errs() << "Visiting function " << funName << " id: " << f->getBuiltinID() << "\n";
+	auto loc = f->getLocation();
+	llvm::errs() << "Location:\n";
+	llvm::errs() << "\tloc.getRawEncoding(): " << loc.getRawEncoding() << " loc.isFileID(): " << loc.isFileID() << "\n";
+	SourceManager &sm = f->getASTContext().getSourceManager();
+	loc.dump(sm);
+	auto lstr = loc.printToString(sm);
+	llvm::errs() << "\ngetFromPtrEncoding dump:\n";
+	loc.getFromPtrEncoding(loc.getPtrEncoding()).dump(sm);
+	llvm::errs() << "\nlocation string: " << lstr << "\n";
+
+	PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
+	if (ps.Folder() != path->Folder())
 	{
-		return false;
+		return true;
 	}
 
+	f->dump();
 
 	auto body = f->getBody();
 	if (body != 0)
 	{
 		ProcessStmt(body);
-		/*
-		if (isa<CompoundStmt>(body))
-		{
-			ProcessCompound(cast<CompoundStmt>(body));
-		}
-		*/
+		ProcessReturnNone();
+		Reset();
 	}
-	
 
-	insideMain = true;
-    llvm::errs() << "Visiting function " << funName << "\n";
 	f->dump();
 
     return true;
 }
 
+void ESCAASTVisitor::Reset()
+{
+	fsm.Reset();
+	variables.clear();
+}
+
 bool ESCAASTVisitor::ProcessStmt(clang::Stmt *stmt)
 {
+	if (!stmt)
+	{
+		return true;
+	}
+
+	llvm::errs() << "~~Processing statement~~\n";
+	stmt->dump();
+
 	if (isa<CompoundStmt>(stmt))
 	{
 		ProcessCompound(cast<CompoundStmt>(stmt));
@@ -171,7 +200,7 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 			}
 			//־עלועטעü new.
 			allocated.push_back(vv);
-			fsm.AddStateToLeaves(state);
+			fsm.AddStateToLeaves(state, fairPred);
 		}
 		if (isa<ImplicitCastExpr>(rhs))
 		{
@@ -203,7 +232,7 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop)
 				shared_ptr<FormulaSMT> bs(new BinarySMT(lhsVar, rhsVar, EqualSMT, false));
 				state.formulae.push_back(bs);
 
-				fsm.AddStateToLeaves(state);
+				fsm.AddStateToLeaves(state, fairPred);
 				//AddToSolver(sname, variables[sname], ...);
 			}
 
@@ -297,7 +326,7 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd)
 		vvForm->Var(vv);
 		state.formulae.push_back(vvForm);
 
-		fsm.AddStateToLeaves(state);
+		fsm.AddStateToLeaves(state, fairPred);
 	}
 	return true;
 }
@@ -336,10 +365,10 @@ bool ESCAASTVisitor::ProcessReturn(clang::ReturnStmt *ret)
 	auto retVal = ret->getRetValue();
 
 	//TODO: check return value.
-	return ProcessReturnNone(ret);
+	return ProcessReturnNone();
 }
 
-bool ESCAASTVisitor::ProcessReturnNone(clang::ReturnStmt *ret)
+bool ESCAASTVisitor::ProcessReturnNone()
 {
 	fsm.ProcessReturnNone();
 	return true;
@@ -363,14 +392,18 @@ bool ESCAASTVisitor::ProcessIf(clang::IfStmt *ifstmt)
 	langOpts.CPlusPlus11 = true;
 	PrintingPolicy pol(langOpts);
 	cond->printPretty(lso, 0, pol);
-	string condStr = lso.str();
+	string condStr = "~if - " + lso.str();
 	llvm::errs() << "\tCondition: " << condStr << "\n";
 	//TODO: Create the state branching.
 	fsm.PushCondition(condStr);
+	StateFSM s;
+	fsm.AddStateToLeaves(s, fairPred, condStr, false);
 	ProcessStmt(ifstmt->getThen());
 	fsm.PopCondition();
 	
-	fsm.PushCondition("else - " + condStr);
+	string elseStr = "~else - " + condStr;
+	fsm.PushCondition(elseStr);
+	fsm.AddStateToLeaves(s, branchPred, elseStr, true);
 	ProcessStmt(ifstmt->getElse());
 	fsm.PopCondition();
 	return true;
