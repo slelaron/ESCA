@@ -11,10 +11,11 @@
 #include "BinarySMT.h"
 #include "ExecSolver.h"
 #include "DefectStorage.h"
+#include "Output.h"
 
 using namespace std;
 
-std::string PrintSMT(int iSat, const FormulaStorage &f)
+std::string PrintSMT(int iSat, const FormulaStorage& f)
 {
 	stringstream ss;
 	ss << "form" << iSat << ".sat";
@@ -24,7 +25,8 @@ std::string PrintSMT(int iSat, const FormulaStorage &f)
 	return ss.str();
 }
 
-FSM::FSM() : iSat(0)
+FSM::FSM() 
+    : iSat(0)
 {
 	CreateStart();
 }
@@ -47,7 +49,7 @@ void FSM::Reset()
 	CreateStart();
 }
 
-bool FSM::GetState(FSMID id, StateFSM &s) 
+bool FSM::GetState(FSMID id, StateFSM& s) 
 {
 	int ss = states.size();
 	if (id < ss && id >= 0)
@@ -68,7 +70,7 @@ bool FSM::GetState(FSMID id, StateFSM &s)
 }
 
 template<class T>
-bool MoveVector(vector<T> &source, vector<T> &dst)
+bool MoveVector(vector<T>& source, vector<T>& dst)
 {
 	vector<T> tmp;
 	tmp.swap(source);
@@ -77,14 +79,12 @@ bool MoveVector(vector<T> &source, vector<T> &dst)
 	return true;
 }
 
-//TODO: rewrite these functions properly.
-
-int FSM::StateToLeaf(int leafId, const StateFSM &newState)
+int FSM::StateToLeaf(int leafId, const StateFSM& newState)
 {
 	return StateToLeaf(leafId, newState, TransitionFSM::EPSILON);
 }
 
-int FSM::StateToLeaf(int leafId, const StateFSM &newState, const std::string &pred)
+int FSM::StateToLeaf(int leafId, const StateFSM& newState, const std::string& pred)
 {
 	StateFSM s = newState;
 	TransitionFSM t;
@@ -114,13 +114,13 @@ int FSM::StateToLeaf(int leafId, const StateFSM &newState, const std::string &pr
 
 
 
-void FSM::AddStateToLeaves(const StateFSM &s, LeafPredicate &pred)
+void FSM::AddStateToLeaves(const StateFSM& s, LeafPredicate& pred)
 {
 	AddStateToLeaves(s, pred, TransitionFSM::EPSILON, true);
 }
 
 //TODO: Refactor this function!
-void FSM::AddStateToLeaves(const StateFSM &s, LeafPredicate &pred, const std::string &cond, bool finCond)
+void FSM::AddStateToLeaves(const StateFSM& s, LeafPredicate& pred, const std::string& cond, bool finCond)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
@@ -172,7 +172,7 @@ void FSM::AddBranchToLeaves(StateFSM s)
 	}
 }
 */
-void FSM::AddFormulaSMT(const std::shared_ptr<FormulaSMT> &f)
+void FSM::AddFormulaSMT(const std::shared_ptr<FormulaSMT>& f)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
@@ -184,7 +184,7 @@ void FSM::AddFormulaSMT(const std::shared_ptr<FormulaSMT> &f)
 	}
 }
 
-void FSM::AddAllocPointer(const VersionedVariable &ap)
+void FSM::AddAllocPointer(const VersionedVariable& ap)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
@@ -196,8 +196,8 @@ void FSM::AddAllocPointer(const VersionedVariable &ap)
 	}
 }
 
-void FSM::HandleDeletePtr(const VersionedVariable &v, std::vector<VersionedVariable> &alloc, 
-			std::vector<VersionedVariable> &del, StateFSM &delState)
+void FSM::HandleDeletePtr(const VersionedVariable& v, std::vector<VersionedVariable>& alloc, 
+			std::vector<VersionedVariable>& del, StateFSM& delState)
 {
 	//write formulae.
 	int size = alloc.size();
@@ -211,16 +211,16 @@ void FSM::HandleDeletePtr(const VersionedVariable &v, std::vector<VersionedVaria
 
 	auto fileName = PrintSMT(iSat, f);
 
-	auto solve = ExecSolver::Run(fileName);
+	auto solverResult = runSolver(fileName);
 
-	if (solve.find("unsat") != -1) //unsat
+	if (solverResult.find("unsat") != -1) //unsat
 	{
-		llvm::errs() << "Correct delete\n";
+		Cout << "Correct delete\n";
 		del.push_back(v);
 	}
 }
 
-void FSM::AddDeleteState(const VersionedVariable &var, bool arrayForm)
+void FSM::AddDeleteState(const VersionedVariable& var, bool arrayForm)
 {
 	int size = states.size();
 	for (int i = 0; i < size; ++i)
@@ -252,10 +252,8 @@ void FSM::AddDeleteState(const VersionedVariable &var, bool arrayForm)
 void FSM::ProcessReturnNone()
 {
 	//For each leaf
-	auto size = states.size();
-	for (int i = 0; i < size; ++i)
+    for (StateFSM &s : states)
 	{
-		StateFSM &s = states[i];
 		if (s.IsLeaf())
 		{
 			//Create a new end state
@@ -264,7 +262,7 @@ void FSM::ProcessReturnNone()
 	}
 }
 
-void FSM::SolveRet(bool isArray, const StateFSM &s) 
+void FSM::SolveRet(bool isArray, const StateFSM& s) 
 {
 	VarStorage alloc, del;
 	//FormulaStorage f = s.formulae; 
@@ -283,6 +281,12 @@ void FSM::SolveRet(bool isArray, const StateFSM &s)
 	auto sDel = del.size();
 	for (int i = 0; i < sAlloc; ++i)
 	{
+        auto name = alloc[i].Name();
+        if (returnVarName.find(name) != returnVarName.end() && !isAllocReturns) {
+            isAllocReturns = true;
+            continue;
+        }
+
 		//check whether this variable is del list.
 		FormulaStorage f = s.formulae; //TODO: do this more effective.
 		for (int j = 0; j < sDel; ++j)
@@ -295,27 +299,28 @@ void FSM::SolveRet(bool isArray, const StateFSM &s)
 		//if this variable is not in del list then there is a memory leak.
 		//auto fileName = PrintSMT(iSat, s.formulae);
 
-		auto solve = ExecSolver::Run(fileName);
+		auto solverResult = runSolver(fileName);
 
-		if (solve.find("unsat") != -1) //unsat
+		if (solverResult.find("unsat") != -1) //unsat
 		{
 			//No leak
 		}
-		else if (solve.find("sat") != -1)
+		else if (solverResult.find("sat") != -1)
 		{
 			//Leak
-			llvm::errs() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LEAK~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-			llvm::errs() << "variable name: " << alloc[i].Name() << "\n";
+            llvm::errs() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LEAK~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+            llvm::errs() << "Location: " << alloc[i].getLocation() << "\n";
+            llvm::errs() << "variable name: " << alloc[i].Name() << "\n";
 			
-			stringstream defect;
-			defect << "Memory leak. Variable name: " << alloc[i].Name();
-			DefectStorage::Instance().AddDefect(defect.str());
+			//stringstream defect;
+			//defect << "Memory leak. Variable name: " << alloc[i].Name();
+			//DefectStorage::Instance().AddDefect(defect.str());
 		}
 	}
 
 }
 
-void FSM::CreateNewRetNoneState(StateFSM &leaf)
+void FSM::CreateNewRetNoneState(StateFSM& leaf)
 {
 	StateFSM s;
 	s.id = GetNewStateID();
@@ -446,7 +451,7 @@ void FSM::SaveToXML(const std::string &path)
 	outf << DoIndent() << "</data>" << endl;
 	--indent;
 
-	llvm::errs() << "States: ";
+	Cout << "States: ";
 
 	for (auto iter = states.begin(); iter != states.end(); ++iter)
 	{
@@ -458,12 +463,12 @@ void FSM::SaveToXML(const std::string &path)
 		outf << DoIndent() << "<type>";
 		if (iter->id)
 		{
-			//llvm::errs() << ((iter->isEnd) ? "0 " : "2 ");
+			//Cout << ((iter->isEnd) ? "0 " : "2 ");
 			outf << ((!iter->isEnd) ? "0 " : "2 ");
 		} 
 		else
 		{
-			llvm::errs() << "1 ";
+			Cout << "1 ";
 
 			outf << "1";
 		}
@@ -484,7 +489,7 @@ void FSM::SaveToXML(const std::string &path)
 		--indent;
 		outf << DoIndent() << "</widget>" << endl;
 	}
-	llvm::errs() << "\n";
+	Cout << "\n";
 
 
 	for (auto iter = transitions.begin(); iter != transitions.end(); ++iter)

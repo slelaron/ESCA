@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <set>
 
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
@@ -16,44 +17,50 @@
 #include "LeafPredicate.h"
 #include "PathStorage.h"
 
+
 class ASTWalker;
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor> 
 {
-	public:
-		ESCAASTVisitor();
-	public:
-		bool VisitFunctionDecl(clang::FunctionDecl *f);
+public:
+	ESCAASTVisitor();
+public:
+	bool VisitFunctionDecl(clang::FunctionDecl* f);
 
-	public:
-		inline void SetWalker(ASTWalker *ast_walker) { walker = ast_walker; }
+public:
+	inline void SetWalker(ASTWalker* ast_walker) { walker = ast_walker; }
 
-		inline void SetPath(const std::string &_path) { path->Path(_path); }
+	inline void SetPath(const std::string& _path) { path->Path(_path); }
 
-	private:
-		void Reset();
-		bool ProcessFunction(clang::FunctionDecl *f);
-		bool ProcessStmt(clang::Stmt *stmt);
-		bool ProcessCompound(clang::CompoundStmt *body);
-		bool ProcessAssignment(clang::BinaryOperator *binop);
-		bool ProcessDeclaration(clang::VarDecl *vd);
-		bool ProcessDelete(clang::CXXDeleteExpr *del);
-		bool ProcessReturn(clang::ReturnStmt *ret);
-		bool ProcessIf(clang::IfStmt *ifstmt);
-		bool ProcessReturnNone(); //Pointers are not returned.
-		bool ProcessReturnPtr(clang::ReturnStmt *ret); //Pointers are returned.
-	private:
-		ASTWalker *walker;
-		std::shared_ptr<PathStorage> path;
+private:
+	void Reset();
+	bool ProcessFunction(clang::FunctionDecl* f);
+	bool ProcessStmt(clang::Stmt* stmt, bool = true);
+	bool ProcessCompound(clang::CompoundStmt* body, bool);
+	bool ProcessAssignment(clang::BinaryOperator* binop);
+	bool ProcessDeclaration(clang::VarDecl* vd);
+	bool ProcessDelete(clang::CXXDeleteExpr* del);
+	bool ProcessReturn(clang::ReturnStmt* ret);
+	bool ProcessIf(clang::IfStmt* ifstmt);
+	bool ProcessReturnNone(); //Pointers are not returned.
+	bool ProcessReturnPtr(clang::ReturnStmt* ret); //Pointers are returned.
+private:
+	ASTWalker* walker;
+	std::shared_ptr<PathStorage> path;
 
-		//std::map<std::string, std::vector<VersionedVariable> > variables;
-		//std::map<std::string, int> variables;
-		std::map<std::string, PtrCounter> variables;
+	//std::map<std::string, std::vector<VersionedVariable> > variables;
+	//std::map<std::string, int> variables;
 
-		std::vector<VersionedVariable> allocated;
-		FSM fsm;
+    // внутри функции
+	std::map<std::string, PtrCounter> variables;
 
-		FairLeafPredicate fairPred;
-		BranchLeafPredicate branchPred;
+	std::vector<VersionedVariable> allocated;
+	FSM fsm;
+
+	FairLeafPredicate fairPred;
+	BranchLeafPredicate branchPred;
+
+    clang::Expr* returnExpr = nullptr;
+    std::string returnVarName;
 };
 #endif

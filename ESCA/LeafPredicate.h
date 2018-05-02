@@ -5,20 +5,20 @@
 
 class LeafPredicate
 {
-	public:
-		virtual bool operator() (const StateFSM &s) = 0;
+public:
+	virtual bool operator() (const StateFSM& s) = 0;
 };
 
 class FairLeafPredicate : public LeafPredicate
 {
-	public:
-		virtual bool operator() (const StateFSM &s) { return (!s.isEnd) && s.outgoing.empty();}
+public:
+	virtual bool operator() (const StateFSM& s) { return (!s.isEnd) && s.outgoing.empty();}
 };
 
 class BranchLeafPredicate : public LeafPredicate
 {
-	public:
-		virtual bool operator() (const StateFSM &s) { return (!s.isEnd) && s.isBranchLeaf; }
+public:
+	virtual bool operator() (const StateFSM& s) { return (!s.isEnd) && s.isBranchLeaf; }
 };
 
 #endif

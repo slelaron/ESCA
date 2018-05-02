@@ -13,21 +13,25 @@ enum EMetaType
 
 class Variable
 {
-	public:
-		Variable() {}
-		Variable(const Variable &v) { name = v.name; type = v.type; metaType = v.metaType; }
-		Variable (const std::string &t, const std::string &n, EMetaType mt) : name(n), type(t) { metaType = mt;}
+public:
+    Variable() = default;
+	Variable(const Variable& v) = default;
+	Variable (const std::string& t, const std::string& n, const std::string& l, EMetaType mt) : name(n), type(t), loc(l), metaType(mt) { }
 
-		inline std::string Name() const { return name; }
-		inline std::string Type() const { return type; }
-		inline EMetaType MetaType() const { return metaType; }
-		inline void MetaType(EMetaType mt) { metaType = mt; }
+	inline std::string Name() const { return name; }
+	inline std::string Type() const { return type; }
+	inline EMetaType MetaType() const { return metaType; }
+	inline void MetaType(EMetaType mt) { metaType = mt; }
 
-		std::string TypeSMT() const;
-	protected:
-		std::string name;
-		std::string type;
-		EMetaType metaType;
+    std::string getLocation() const { return loc; }
+    void setLocation(const std::string& l) { loc = l; }
+
+	std::string TypeSMT() const;
+protected:
+	std::string name;
+	std::string type;
+    std::string loc;
+    EMetaType metaType;
 };
 
 #endif

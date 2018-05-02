@@ -3,12 +3,6 @@
 
 #include <string>
 
-class ExecSolver
-{
-	public:
-		static std::string Run(std::string file);
-	private:
-		static const std::string CommandLine;
-};
+std::string runSolver(const std::string& file);
 
 #endif

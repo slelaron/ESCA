@@ -4,7 +4,7 @@
 
 using namespace std;
 
-DefectStorage &DefectStorage::Instance()
+DefectStorage& DefectStorage::Instance()
 {
 	static DefectStorage instance;
 	return instance;
@@ -23,11 +23,9 @@ void DefectStorage::SaveDefects()
 		return;
 	}
 
-	auto size = defects.size();
-	for (int i = 0; i < size; ++i)
-	{
-		outf << defects[i] << endl;
-	}
+    for (const auto& defect : defects) {
+        outf << defect << endl;
+    }
 
 	outf.close();
 }

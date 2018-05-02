@@ -5,18 +5,18 @@
 
 class PathStorage
 {
-	public:	
-		PathStorage() {}
-		PathStorage(const std::string &path);
+public:	
+	PathStorage() {}
+	PathStorage(const std::string& path);
 
-		void Path(const std::string &path);
-		std::string Path() const { return fullPath; }
-		std::string File() const { return file; }
-		std::string Folder() const { return folder; }
-	private:
-		std::string fullPath;
-		std::string file;
-		std::string folder;
+	void Path(const std::string& path);
+	std::string Path() const { return fullPath; }
+	std::string File() const { return file; }
+	std::string Folder() const { return folder; }
+private:
+	std::string fullPath;
+	std::string file;
+	std::string folder;
 };
 
 #endif

@@ -5,9 +5,10 @@ using namespace clang;
 
 bool ESCAASTConsumer::HandleTopLevelDecl(DeclGroupRef DR)
 {
-    for (DeclGroupRef::iterator b = DR.begin(), e = DR.end();
-                b != e; ++b)
+    for (auto it : DR) {
         // Traverse the declaration using our AST visitor.
-        visitor.TraverseDecl(*b);
+        visitor.TraverseDecl(it);
+    }
+
     return true;
 }

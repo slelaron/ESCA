@@ -16,22 +16,22 @@ class ESCAASTConsumer;
 
 class ASTWalker
 {
-	public:
-		ASTWalker();
-		~ASTWalker();
-		inline void WalkAST() { WalkAST("D:\\Programming\\testcode\\test1_1_2.cpp"); }
-		void WalkAST(std::string path);
+public:
+	ASTWalker();
+	~ASTWalker();
+	inline void WalkAST() { WalkAST("D:\\Programming\\testcode\\test1_1_2.cpp"); }
+	void WalkAST(const std::string& path);
 
-	public:
-		void DumpStmt(clang::Stmt *s);
+public:
+	void DumpStmt(clang::Stmt* s);
 
-	protected:
-		virtual void SetIncludeDirectories();
+protected:
+	virtual void SetIncludeDirectories();
 
-	protected:
-		llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions;
-		clang::ASTContext *astContext;
-		ESCAASTConsumer *astConsumer;
+protected:
+	llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions;
+	clang::ASTContext* astContext;
+	ESCAASTConsumer* astConsumer;
 };
 
 #endif

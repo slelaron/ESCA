@@ -7,16 +7,16 @@
 
 class TransitionFSM
 {
-	public:
-		FSMID id;
-		FSMID start;
-		FSMID end;
+public:
+	FSMID id;
+	FSMID start;
+	FSMID end;
 
-		std::string evt;
-		static const std::string EPSILON;
+	std::string evt;
+	static const std::string EPSILON;
 };
 
-bool operator ==(const TransitionFSM &lhs, const TransitionFSM &rhs);
-bool operator <(const TransitionFSM &lhs, const TransitionFSM &rhs);
+bool operator ==(const TransitionFSM& lhs, const TransitionFSM& rhs);
+bool operator <(const TransitionFSM& lhs, const TransitionFSM& rhs);
 
 #endif

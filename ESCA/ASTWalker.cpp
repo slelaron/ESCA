@@ -15,9 +15,10 @@
 
 #include <clang/AST/ASTContext.h>
 
-
 #include <llvm/Support/Host.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include <llvm/IR/Function.h>
 
 #include "ASTWalker.h"
 #include "ESCAASTConsumer.h"
@@ -26,7 +27,9 @@ using namespace clang;
 using namespace llvm;
 using namespace std;
 
-ASTWalker::ASTWalker() : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer)
+ASTWalker::ASTWalker()
+    : headerSearchOptions(new clang::HeaderSearchOptions())
+    , astConsumer(new ESCAASTConsumer)
 {
 	astConsumer->SetWalker(this);
 }
@@ -39,23 +42,23 @@ ASTWalker::~ASTWalker()
 
 void ASTWalker::SetIncludeDirectories()
 {
-	headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
-		false, false); 
-	headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
-		false, false); 
-	headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
-		false, false); 
-	headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
-		false, false); 
+	//headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
+	//	false, false); 
+	//headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
+	//	false, false); 
+	//headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
+	//	false, false); 
+	//headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
+	//	false, false); 
 }
 
-void ASTWalker::WalkAST(string path)
+void ASTWalker::WalkAST(const string& path)
 {
     clang::DiagnosticOptions diagnosticOptions;
     clang::TextDiagnosticPrinter *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(
 																llvm::outs(), &diagnosticOptions);
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
-    clang::DiagnosticsEngine *pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
+    clang::DiagnosticsEngine* pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
             &diagnosticOptions, pTextDiagnosticPrinter);
 
     clang::LangOptions languageOptions;
@@ -100,16 +103,17 @@ void ASTWalker::WalkAST(string path)
 	clang::TargetOptions targetOptions;
     targetOptions.Triple = llvm::sys::getDefaultTargetTriple();
 
-    clang::TargetInfo *pTargetInfo =
+    clang::TargetInfo* pTargetInfo =
         clang::TargetInfo::CreateTargetInfo(
             *pDiagnosticsEngine,
             &targetOptions);
 
     clang::HeaderSearch headerSearch(headerSearchOptions,
-                                     fileManager,
+                                     sourceManager,
                                      *pDiagnosticsEngine,
                                      languageOptions,
                                      pTargetInfo);
+
     clang::CompilerInstance compInst;
 
     llvm::IntrusiveRefCntPtr<clang::PreprocessorOptions> pOpts( new clang::PreprocessorOptions());
@@ -129,10 +133,7 @@ void ASTWalker::WalkAST(string path)
         *headerSearchOptions,
         frontendOptions);
 
-
-	//string path = "D:\\Programming\\testcode\\test1_1.cpp";
-    //const clang::FileEntry *pFile = fileManager.getFile(argv[1]);
-	const clang::FileEntry *pFile = fileManager.getFile(path.c_str());
+	const clang::FileEntry* pFile = fileManager.getFile(path.c_str());
     sourceManager.createMainFileID(pFile);
 
     const clang::TargetInfo &targetInfo = *pTargetInfo;
@@ -145,26 +146,17 @@ void ASTWalker::WalkAST(string path)
 
 	astContext = new ASTContext(languageOptions, sourceManager, pTargetInfo, identifierTable, selectorTable,
 		builtinContext, 0);
-	/*
-    clang::ASTContext astContext(
-        languageOptions,
-        sourceManager,
-        pTargetInfo,
-        identifierTable,
-        selectorTable,
-        builtinContext,
-        0 /* size_reserve* /);
-	*/
-   //MyASTConsumer astConsumer;
-
-	astConsumer->SetPath(path);
-    pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
-    clang::ParseAST(preprocessor, astConsumer, *astContext);
-    pTextDiagnosticPrinter->EndSourceFile();
+	
+    {
+        astConsumer->SetPath(path);
+        pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
+        clang::ParseAST(preprocessor, astConsumer, *astContext);
+        pTextDiagnosticPrinter->EndSourceFile(); 
+    }
 }
 
-void ASTWalker::DumpStmt(clang::Stmt *s)
+void ASTWalker::DumpStmt(clang::Stmt* s)
 {
 	//s->dump(llvm::errs, astContext->getSourceManager());
-	s->dump();
+	//s->dump();
 }

@@ -5,10 +5,8 @@
 
 class FormulaSMT
 {
-	public:
-		virtual std::string FormatSMTLIB() = 0; 
-	protected:
-
+public:
+	virtual std::string FormatSMTLIB() = 0;
 };
 
 #endif

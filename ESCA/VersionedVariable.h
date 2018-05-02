@@ -7,20 +7,18 @@
 
 class VersionedVariable : public Variable
 {
-	public:
-		VersionedVariable() : Variable() {}
-		VersionedVariable(const VersionedVariable &vv) : Variable(vv) {version = vv.version;}
-		VersionedVariable(std::string t, std::string n, EMetaType mt, int ver) : Variable(t, n, mt), version(ver) {}
+public:
+    VersionedVariable() = default;
+	VersionedVariable(const VersionedVariable& vv) = default;
+	VersionedVariable(const std::string& t, const std::string& n, const std::string& l, EMetaType mt, int ver) : Variable(t, n, l, mt), version(ver) {}
 
-		inline int Version() const { return version; }
-		inline std::string VersionedName() const { std::stringstream ss; ss << name << "!" << version; return ss.str(); }
+	inline int Version() const { return version; }
+	inline std::string VersionedName() const { std::stringstream ss; ss << name << "!" << version; return ss.str(); }
 
-		//friend bool operator ==(const VersionedVariable &lhs, const VersionedVariable &rhs); 
-		//friend bool operator <(const VersionedVariable &lhs, const VersionedVariable &rhs); 
-	private:
-		int version;
+private:
+	int version;
 };
 
-bool operator ==(const VersionedVariable &lhs, const VersionedVariable &rhs); 
-bool operator <(const VersionedVariable &lhs, const VersionedVariable &rhs); 
+bool operator ==(const VersionedVariable& lhs, const VersionedVariable& rhs);
+bool operator <(const VersionedVariable& lhs, const VersionedVariable& rhs);
 #endif

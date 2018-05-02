@@ -15,33 +15,31 @@ typedef std::deque<std::shared_ptr<FormulaSMT> > FormulaStorage;
 typedef std::string ConditionEvent;
 
 //class TransitionFSM;
-std::string FormulaeToString(const std::deque<std::shared_ptr<FormulaSMT> > &formulae);
-std::string FormulaeToStringSat(const std::deque<std::shared_ptr<FormulaSMT> > &formulae);
+std::string FormulaeToString(const std::deque<std::shared_ptr<FormulaSMT>>& formulae);
+std::string FormulaeToStringSat(const std::deque<std::shared_ptr<FormulaSMT>>& formulae);
 
 class StateFSM
 {
-	public:
-		StateFSM() : isEnd(false), isBranchLeaf(false) {}
-		~StateFSM();
-		FSMID id;
-		std::vector<FSMID> incoming;
-		std::vector<FSMID> outgoing;
+public:
+	FSMID id = -1;
+	std::vector<FSMID> incoming;
+	std::vector<FSMID> outgoing;
 
-		VarStorage allocPointers;
-		VarStorage allocArrays;
-		VarStorage delPointers;
-		VarStorage delArrays;
-		FormulaStorage formulae;
-		bool isEnd;
-		bool isBranchLeaf; //Former leaf in which there is 
-	public:
-		std::string PrintFormulae();
-		std::string PrintFormulaeSat();
-		inline bool IsLeaf() const { return (!isEnd) && outgoing.empty(); }
+	VarStorage allocPointers;
+	VarStorage allocArrays;
+	VarStorage delPointers;
+	VarStorage delArrays;
+	FormulaStorage formulae;
+    bool isEnd = false;
+	bool isBranchLeaf = false; //Former leaf in which there is 
+public:
+	std::string PrintFormulae();
+	std::string PrintFormulaeSat();
+	inline bool IsLeaf() const { return (!isEnd) && outgoing.empty(); }
 };
 
-bool operator ==(const StateFSM &lhs, const StateFSM &rhs);
-bool operator <(const StateFSM &lhs, const StateFSM &rhs);
+bool operator ==(const StateFSM& lhs, const StateFSM& rhs);
+bool operator <(const StateFSM& lhs, const StateFSM& rhs);
 //typedef shared_ptr<StateFSM> StateFSMPtr;
 
 #endif

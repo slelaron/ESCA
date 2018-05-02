@@ -7,10 +7,10 @@
 
 class SMTSet
 {
-	public:
-		inline void AddVar(VersionedVariable v) { vars.insert(v); }
-	private:
-		std::set<VersionedVariable> vars;
+public:
+	inline void AddVar(VersionedVariable v) { vars.insert(v); }
+private:
+	std::set<VersionedVariable> vars;
 };
 
 #endif

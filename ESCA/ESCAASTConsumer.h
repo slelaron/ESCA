@@ -12,16 +12,16 @@ class ASTWalker;
 
 class ESCAASTConsumer : public clang::ASTConsumer
 {
-	public:
-		ESCAASTConsumer() : visitor() {}
+public:
+    ESCAASTConsumer() = default;
 
-		virtual bool HandleTopLevelDecl(clang::DeclGroupRef DR);
+	virtual bool HandleTopLevelDecl(clang::DeclGroupRef DR) override;
 
-	public:
-		inline void SetWalker(ASTWalker *walker) { visitor.SetWalker(walker); }
-		inline void SetPath(const std::string &path) { visitor.SetPath(path); }
-	private:
-		ESCAASTVisitor visitor;
+public:
+	inline void SetWalker(ASTWalker* walker) { visitor.SetWalker(walker); }
+	inline void SetPath(const std::string& path) { visitor.SetPath(path); }
+private:
+	ESCAASTVisitor visitor;
 };
 
 #endif
