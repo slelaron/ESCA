@@ -4,11 +4,13 @@
 #include <clang/Basic/FileSystemOptions.h>
 #include <clang/Basic/FileManager.h>
 #include <clang/Basic/SourceManager.h>
+#include <clang/Basic/MemoryBufferCache.h>
 #include <clang/Frontend/CompilerInvocation.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Lex/HeaderSearch.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Preprocessor.h>
+#include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Frontend/FrontendOptions.h>
 #include <clang/Frontend/Utils.h>
 #include <clang/Parse/ParseAST.h>
@@ -67,7 +69,10 @@ void ASTWalker::WalkAST(const string& path)
 
     clang::SourceManager sourceManager(*pDiagnosticsEngine, fileManager);
 
-	CompilerInvocation::setLangDefaults(languageOptions, IK_CXX);
+	InputKind ik(InputKind::CXX, InputKind::Source, 0);
+	Triple triple;
+	clang::PreprocessorOptions ppopts;
+	CompilerInvocation::setLangDefaults(languageOptions, ik, triple, ppopts);
 	languageOptions.ImplicitInt = 0;
 
 	SetIncludeDirectories();
@@ -100,13 +105,14 @@ void ASTWalker::WalkAST(const string& path)
 		false, false); 
 	*/
 
-	clang::TargetOptions targetOptions;
-    targetOptions.Triple = llvm::sys::getDefaultTargetTriple();
+	//clang::TargetOptions targetOptions;
+	auto targetOptions = std::make_shared<clang::TargetOptions>();
+    targetOptions->Triple = llvm::sys::getDefaultTargetTriple();
 
     clang::TargetInfo* pTargetInfo =
         clang::TargetInfo::CreateTargetInfo(
             *pDiagnosticsEngine,
-            &targetOptions);
+            targetOptions);
 
     clang::HeaderSearch headerSearch(headerSearchOptions,
                                      sourceManager,
@@ -116,15 +122,26 @@ void ASTWalker::WalkAST(const string& path)
 
     clang::CompilerInstance compInst;
 
-    llvm::IntrusiveRefCntPtr<clang::PreprocessorOptions> pOpts( new clang::PreprocessorOptions());
-    clang::Preprocessor preprocessor(
-        pOpts,
-        *pDiagnosticsEngine,
-        languageOptions,
-        pTargetInfo,
-        sourceManager,
-        headerSearch,
-        compInst);
+    //llvm::IntrusiveRefCntPtr<clang::PreprocessorOptions> pOpts( new clang::PreprocessorOptions());
+	auto pOpts = std::make_shared<clang::PreprocessorOptions>();
+	MemoryBufferCache mbc;
+    //clang::Preprocessor preprocessor(
+    //    pOpts,
+    //    *pDiagnosticsEngine,
+    //    languageOptions,
+    //    pTargetInfo,
+    //    sourceManager,
+    //    headerSearch,
+    //    compInst);
+	clang::Preprocessor preprocessor(
+		pOpts,
+		*pDiagnosticsEngine,
+		languageOptions,
+		sourceManager,
+		mbc,
+		headerSearch,
+		compInst);
+
 
     clang::FrontendOptions frontendOptions;
     clang::InitializePreprocessor(

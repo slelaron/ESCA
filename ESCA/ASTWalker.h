@@ -29,7 +29,8 @@ protected:
 	virtual void SetIncludeDirectories();
 
 protected:
-	llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions;
+	//llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions;
+	std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;
 	clang::ASTContext* astContext;
 	ESCAASTConsumer* astConsumer;
 };

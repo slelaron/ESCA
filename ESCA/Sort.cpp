@@ -12,7 +12,7 @@ std::unordered_set<const llvm::Function *> get_called_functions(const llvm::Func
     {
         for (auto const & instr : bb)
         {
-            if (auto call = dynamic_cast<llvm::CallInst const *>(&instr))
+            if (auto call = static_cast<llvm::CallInst const *>(&instr))
             {
                 res.insert(call->getCalledFunction());
             }
