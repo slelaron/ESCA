@@ -103,7 +103,7 @@ void ASTWalker::WalkAST(const string& path)
 		false, false); 
 	headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
 		false, false); 
-	*/
+	// */
 
 	//clang::TargetOptions targetOptions;
 	auto targetOptions = std::make_shared<clang::TargetOptions>();
@@ -144,14 +144,23 @@ void ASTWalker::WalkAST(const string& path)
 
 
     clang::FrontendOptions frontendOptions;
+	clang::RawPCHContainerReader containerReader;
     clang::InitializePreprocessor(
         preprocessor,
         *pOpts,
-        *headerSearchOptions,
+		containerReader,
         frontendOptions);
 
+	clang::ApplyHeaderSearchOptions(
+		headerSearch,
+		*headerSearchOptions,
+		languageOptions,
+		triple
+	);
+
 	const clang::FileEntry* pFile = fileManager.getFile(path.c_str());
-    sourceManager.createMainFileID(pFile);
+    //sourceManager.createMainFileID(pFile);
+	//sourceManager.createFileID(pFile);
 
     const clang::TargetInfo &targetInfo = *pTargetInfo;
 
@@ -159,10 +168,11 @@ void ASTWalker::WalkAST(const string& path)
     clang::SelectorTable selectorTable;
 
     clang::Builtin::Context builtinContext;
-    builtinContext.InitializeTarget(targetInfo);
+    builtinContext.InitializeTarget(targetInfo, nullptr);
 
-	astContext = new ASTContext(languageOptions, sourceManager, pTargetInfo, identifierTable, selectorTable,
-		builtinContext, 0);
+	//astContext = new ASTContext(languageOptions, sourceManager, pTargetInfo, identifierTable, selectorTable,
+	//	builtinContext, 0);
+	astContext = new ASTContext(languageOptions, sourceManager, identifierTable, selectorTable, builtinContext);
 	
     {
         astConsumer->SetPath(path);
