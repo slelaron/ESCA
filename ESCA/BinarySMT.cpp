@@ -31,8 +31,8 @@ string BinarySMT::FormatSMTLIB()
 		sop = "= ";
 	}
 
-	string negBeg = "";// = 
-	string negEnd = "";// = ")";
+	string negBeg;// =
+	string negEnd;// = ")";
 	if (negation)
 	{
 		negBeg = "not (";

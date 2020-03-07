@@ -14,39 +14,37 @@
 using namespace std;
 
 extern Target::Context ctx;
-extern std::map<std::string, Target::Function*> allFunctions;
+extern std::map<std::string, Target::Function *> allFunctions;
 extern std::set<std::string> allocatedFunctions;
 
 extern std::map<std::string, std::string> staticFuncMapping;
 
 std::set<std::string> processedFunctions;
 
-int main(int argc, char **argv)
-{
-	ASTWalker walker;
+int main(int argc, char **argv) {
     int count = 0;
 
-    std::string root = "C:\\Users\\Yuriy\\Desktop\\Diplom 2018\\tests\\test\\";
-    std::string name;
+    std::string root = R"(/home/alex/CLionProjects/ESCA/ESCA/resurce/)";
     //name = "rtk";
     //name = "Its";
     //name = "gnss";
     //name = "quake";
     //name = "facebook";
     //name = "arduino";
-    name = "stlink";
+    //name = "stlink";
 
-    //std::fstream fstream("C:\\Users\\Yuriy\\Desktop\\Diplom 2018\\tests\\test\\" + name + ".txt", std::ios_base::in);
-    //std::string file;
-    //while (std::getline(fstream, file)) {
-    //    walker.WalkAST(root + file);
-    //    llvm::errs() << "Parsed " << ++count << " files\n";
-    //}
+//    std::fstream fstream(root + name + ".txt", std::ios_base::in);
+//    std::string file;
+//    while (std::getline(fstream, file)) {
+//        walker.WalkAST(root + file);
+//        llvm::errs() << "Parsed " << ++count << " files\n";
+//    }
 
-    walker.WalkAST("C:\\Users\\Yuriy\\Desktop\\Diplom 2018\\tests\\leak2\\leak2\\1.cpp");
+    std::string cpp_file = "1.cpp";
+    ASTWalker walker;
+    walker.WalkAST(root + cpp_file);
 
     Cout << "---------------------------------------";
-
     allocatedFunctions.clear();
     allocatedFunctions.insert(std::string("malloc"));
 
@@ -56,7 +54,7 @@ int main(int argc, char **argv)
         p.second->process();
     }
 
-	DefectStorage::Instance().SaveDefects();
+    DefectStorage::Instance().SaveDefects();
 
-	return 0;
+    return 0;
 }

@@ -90,8 +90,8 @@ public:
 
     void process(ProcessCtx& ctx) override {
         // process then
-        // скорей всего в then находятся какие то простые действия, котораы нам не интересны
-        // например присвоение констант или еще что то такое
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ then пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (thenSt) {
             ctx.fsm.PushCondition(condStr);
             StateFSM s;
@@ -101,7 +101,7 @@ public:
         }
 
         // process else
-        // тоже самое, как для then, но есть еще случай, когда else вообще отсутствует
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ then, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ else пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (elseSt) {
             ctx.fsm.PushCondition(elseStr);
             StateFSM s;
@@ -138,14 +138,14 @@ public:
 
             ++cntIter.first->second.count;
 
-            // TODO: поддержать как царь разные варианты для массива и просто указателся
+            // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             StateFSM state;
             std::string type = "";
             VersionedVariable vv(type, varName, loc, VAR_POINTER, 1);
             {
                 state.allocPointers.push_back(vv);
             }
-            //Отметить функцию как new.
+            //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ new.
             std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
             vvForm->Var(vv);
             state.formulae.push_back(vvForm);
@@ -228,7 +228,7 @@ public:
                 state.allocPointers.push_back(vv);
                 lhsCnt.meta = VAR_POINTER;
             }
-            //Отметить new.
+            //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ new.
             ctx.allocated.push_back(vv);
 
             std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
@@ -316,7 +316,7 @@ public:
             state.allocPointers.push_back(vv);
             lhsCnt.meta = VAR_POINTER;
         }
-        //Отметить new.
+        //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ new.
         ctx.allocated.push_back(vv);
 
         std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
@@ -379,7 +379,7 @@ public:
             if (allFunctions.find(c) == allFunctions.end()) {
                 // KABUM
                 continue;
-                __debugbreak();
+//                __debugbreak();
             }
 
             // prevent recursion
@@ -487,12 +487,12 @@ struct Context {
         return s;
     }
 
-    // просто создаем набор стейтов и добавляем его на вершину стэка,
-    // не пуша некуда, для пуша в контекст есть отдельный метод
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ,
+    // пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     Statement* createCompoundStatement(bool addToStates = true) {
         //addToStates = true;
         auto s = new CompoundStatement();
-        // начало функции
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (stackSt.empty()) {
             lastFoo->statement = s;
         }
@@ -504,7 +504,7 @@ struct Context {
         return s;
     }
 
-    // кладет с вершины стэка в общую схему
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     void addCompoundStatement() {
         //if (stackSt.size() > 1) {
         //    stackSt[stackSt.size() - 2]->addState(stackSt.back());

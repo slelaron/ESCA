@@ -51,7 +51,7 @@ private:
 	//std::map<std::string, std::vector<VersionedVariable> > variables;
 	//std::map<std::string, int> variables;
 
-    // внутри функции
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	std::map<std::string, PtrCounter> variables;
 
 	std::vector<VersionedVariable> allocated;

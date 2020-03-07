@@ -12,7 +12,7 @@ DefectStorage& DefectStorage::Instance()
 
 void DefectStorage::SaveDefects()
 {
-	if (outputPath == "")
+	if (outputPath.empty())
 	{
 		return;
 	}

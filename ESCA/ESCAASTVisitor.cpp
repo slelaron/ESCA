@@ -28,60 +28,55 @@ std::map<std::string, std::string> staticFuncMapping;
 
 std::set<std::string> allocatedFunctions;
 
-std::map<std::string, Target::Function*> allFunctions;
+std::map<std::string, Target::Function *> allFunctions;
 
 Target::Context ctx;
 
 
-SourceManager* currSM = nullptr;
+SourceManager *currSM = nullptr;
 
 
-std::string getLocation(const clang::Stmt* st) {
-    auto loc = st->getLocStart();
+std::string getLocation(const clang::Stmt *st) {
+    auto loc = st->getBeginLoc();
     return loc.printToString(*currSM);
 }
 
 
-ESCAASTVisitor::ESCAASTVisitor() : walker(0), path(new PathStorage)
-{
+ESCAASTVisitor::ESCAASTVisitor() : walker(nullptr), path(new PathStorage) {
 }
 
 
-bool ESCAASTVisitor::VisitFunctionDecl(FunctionDecl* f) 
-{
-	return ProcessFunction(f);
+bool ESCAASTVisitor::VisitFunctionDecl(FunctionDecl *f) {
+    return ProcessFunction(f);
 }
 
-bool ESCAASTVisitor::ProcessFunction(clang::FunctionDecl* f)
-{
-	string funName = f->getNameInfo().getName().getAsString();
-	
+bool ESCAASTVisitor::ProcessFunction(clang::FunctionDecl *f) {
+    string funName = f->getNameInfo().getName().getAsString();
+
     ////////////
     Cout << "Visiting function " << funName << " id: " << f->getBuiltinID() << "\n";
-	auto loc = f->getLocation();
+    auto loc = f->getLocation();
     Cout << "Location:\n";
     Cout << "\tloc.getRawEncoding(): " << loc.getRawEncoding() << " loc.isFileID(): " << loc.isFileID() << "\n";
-	SourceManager &sm = f->getASTContext().getSourceManager();
+    SourceManager &sm = f->getASTContext().getSourceManager();
     currSM = &sm;
-	loc.print(Cout, sm);
-	auto lstr = loc.printToString(sm);
+    loc.print(llvm::nulls(), sm);
+    auto lstr = loc.printToString(sm);
     Cout << "\ngetFromPtrEncoding dump:\n";
-	loc.getFromPtrEncoding(loc.getPtrEncoding()).print(Cout, sm);
+    loc.getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
     Cout << "\nlocation string: " << lstr << "\n";
 
-	PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
-	if (ps.Folder() != path->Folder())
-	{
-		return true;
-	}
+    PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
+    if (ps.Folder() != path->Folder()) {
+        return true;
+    }
 
-	f->print(Cout);
+    f->print(llvm::nulls());
 
     /////////
 
-	auto body = f->getBody();
-	if (body != nullptr)
-	{
+    auto body = f->getBody();
+    if (body != nullptr) {
         if (!f->isGlobal()) {
             static int num = 0;
             staticFuncMapping[funName] = funName + std::to_string(num);
@@ -97,91 +92,69 @@ bool ESCAASTVisitor::ProcessFunction(clang::FunctionDecl* f)
 
         allFunctions[funName] = ctx.lastFoo;
 
-		ProcessStmt(body);
+        ProcessStmt(body);
         // lazy
-		//ProcessReturnNone();
-		Reset();
-	}
+        //ProcessReturnNone();
+        Reset();
+    }
 
-	f->print(Cout);
+    f->print(llvm::nulls());
 
     return true;
 }
 
-void ESCAASTVisitor::Reset()
-{
-	fsm.Reset();
-	variables.clear();
+void ESCAASTVisitor::Reset() {
+    fsm.Reset();
+    variables.clear();
 }
 
-bool ESCAASTVisitor::ProcessStmt(clang::Stmt* stmt, bool addToStates)
-{
-	if (!stmt)
-	{
-		return true;
-	}
+bool ESCAASTVisitor::ProcessStmt(clang::Stmt *stmt, bool addToStates) {
+    if (!stmt) {
+        return true;
+    }
 
-	Cout << "~~Processing statement~~\n";
-	//stmt->dump();
+    Cout << "~~Processing statement~~\n";
+    //stmt->dump();
 
-	if (auto compSt = dyn_cast<CompoundStmt>(stmt))
-	{
-		ProcessCompound(compSt, addToStates);
-	} else
-	if (auto declSt = dyn_cast<DeclStmt>(stmt))
-	{
-		Cout << "DeclStmt!\n";
+    if (auto compSt = dyn_cast<CompoundStmt>(stmt)) {
+        ProcessCompound(compSt, addToStates);
+    } else if (auto declSt = dyn_cast<DeclStmt>(stmt)) {
+        Cout << "DeclStmt!\n";
         if (declSt->isSingleDecl()) {
             auto sd = declSt->getSingleDecl();
-            if (sd)
-            {
-                if (auto varSt = dyn_cast<VarDecl>(sd))
-                {
+            if (sd) {
+                if (auto varSt = dyn_cast<VarDecl>(sd)) {
                     Cout << "VarDecl!\n";
                     ProcessDeclaration(varSt);
                 }
             }
-        }
-        else {
+        } else {
             DeclGroupRef group = declSt->getDeclGroup();
-            if (!group.isNull())
-            {
+            if (!group.isNull()) {
                 Cout << "DeclGroup\n";
                 //TODO: do something!
             }
         }
-	} else
-	if (isa<BinaryOperator>(stmt))
-	{
-		BinaryOperator* bo = cast<BinaryOperator>(stmt);
-		if (bo->isAssignmentOp() == true) 
-		{
-			ProcessAssignment(bo);
-		}
-	} else
-	if (auto delSt = dyn_cast<CXXDeleteExpr>(stmt))
-	{
-		Cout << "delete!\n";
-		ProcessDelete(delSt);
-	} else
-	if (auto retSt = dyn_cast<ReturnStmt>(stmt))
-	{
-		ProcessReturn(retSt);
-	} else
-	if (auto ifSt = dyn_cast<IfStmt>(stmt))
-	{
-		ProcessIf(ifSt);
-	} else 
-    if (auto castSt = dyn_cast<ParenExpr>(stmt)) {
+    } else if (isa<BinaryOperator>(stmt)) {
+        auto bo = cast<BinaryOperator>(stmt);
+        if (bo->isAssignmentOp()) {
+            ProcessAssignment(bo);
+        }
+    } else if (auto delSt = dyn_cast<CXXDeleteExpr>(stmt)) {
+        Cout << "delete!\n";
+        ProcessDelete(delSt);
+    } else if (auto retSt = dyn_cast<ReturnStmt>(stmt)) {
+        ProcessReturn(retSt);
+    } else if (auto ifSt = dyn_cast<IfStmt>(stmt)) {
+        ProcessIf(ifSt);
+    } else if (auto castSt = dyn_cast<ParenExpr>(stmt)) {
         auto sub = castSt->getSubExpr();
         if (auto bo = dyn_cast<BinaryOperator>(sub)) {
-            if (bo->isAssignmentOp() == true)
-            {
+            if (bo->isAssignmentOp()) {
                 ProcessAssignment(bo);
             }
         }
-    } else
-    if (auto rhsRefExpr = dyn_cast<CallExpr>(stmt)) {
+    } else if (auto rhsRefExpr = dyn_cast<CallExpr>(stmt)) {
         auto callee = rhsRefExpr->getCallee();
         //callee->dump();
         if (auto subExpr = dyn_cast<ImplicitCastExpr>(callee)) {
@@ -211,73 +184,67 @@ bool ESCAASTVisitor::ProcessStmt(clang::Stmt* stmt, bool addToStates)
         }
     }
 
-	return true;
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessCompound(clang::CompoundStmt* body, bool addToStates)
-{
-    Target::Statement* state = ctx.createCompoundStatement(addToStates);
+bool ESCAASTVisitor::ProcessCompound(clang::CompoundStmt *body, bool addToStates) {
+    Target::Statement *state = ctx.createCompoundStatement(addToStates);
 
     ctx.setIf(state);
 
-	auto iter = body->body_begin();
-	for (; iter != body->body_end(); ++iter)
-	{
-		ProcessStmt(*iter);
-	}
+    auto iter = body->body_begin();
+    for (; iter != body->body_end(); ++iter) {
+        ProcessStmt(*iter);
+    }
 
     ctx.addCompoundStatement();
     ctx.popCompound();
 
-	return true;
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator* binop)
-{
-	// blablabla
-	Cout << "assignment \n";
+bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator *binop) {
+    // blablabla
+    Cout << "assignment \n";
 
-	Stmt* lhs = binop->getLHS();
+    Stmt *lhs = binop->getLHS();
 
-    auto name = lhs->getStmtClassName();
+//    auto name = lhs->getStmtClassName();
 
-	if (isa<DeclRefExpr>(lhs))
-	{
-		Cout << "\tto reference ";
-		DeclRefExpr *ref = cast<DeclRefExpr>(lhs);
-		DeclarationNameInfo nameInfo = ref->getNameInfo();
-		DeclarationName name = nameInfo.getName();
-		//name.dump();
-		string sname = name.getAsString();
-		Cout << sname;
+    if (isa<DeclRefExpr>(lhs)) {
+        Cout << "\tto reference ";
+        auto *ref = cast<DeclRefExpr>(lhs);
+        DeclarationNameInfo nameInfo = ref->getNameInfo();
+        DeclarationName name = nameInfo.getName();
+        //name.dump();
+        string sname = name.getAsString();
+        Cout << sname;
 
-		PtrCounter &lhsCnt = variables[sname];
-		int lhsVer = ++(lhsCnt.count);
+        PtrCounter &lhsCnt = variables[sname];
+        int lhsVer = ++(lhsCnt.count);
 
-		Stmt *rhs = binop->getRHS();
+        Stmt *rhs = binop->getRHS();
 
         //rhs->dump();
 
-		if (isa<CXXNewExpr>(rhs))
-		{
-			CXXNewExpr *newOp = cast<CXXNewExpr>(rhs);
+        if (isa<CXXNewExpr>(rhs)) {
+            auto newOp = cast<CXXNewExpr>(rhs);
 
-            newOp->getLocStart();
+            newOp->getBeginLoc();
 
             ctx.addVarAssigmentNew(sname, newOp->isArray(), getLocation(newOp));
-		}
-		if (isa<ImplicitCastExpr>(rhs))
-		{
-			ImplicitCastExpr *ice = cast<ImplicitCastExpr>(rhs);
-			Stmt *subexpr = ice->getSubExpr();
-			if (isa<DeclRefExpr>(subexpr)) //pointer
-			{
-				auto rhsRefExpr = cast<DeclRefExpr>(subexpr);
-				string rhsPointer = rhsRefExpr->getNameInfo().getName().getAsString();
+        }
+        if (isa<ImplicitCastExpr>(rhs)) {
+            auto ice = cast<ImplicitCastExpr>(rhs);
+            Stmt *subexpr = ice->getSubExpr();
+            if (isa<DeclRefExpr>(subexpr)) //pointer
+            {
+                auto rhsRefExpr = cast<DeclRefExpr>(subexpr);
+                string rhsPointer = rhsRefExpr->getNameInfo().getName().getAsString();
 
                 ctx.addVarAssigmentFromPointer(sname, rhsPointer, getLocation(rhsRefExpr));
             }
-		}
+        }
         if (isa<CallExpr>(rhs)) {
             auto rhsRefExpr = cast<CallExpr>(rhs);
             auto callee = rhsRefExpr->getCallee();
@@ -313,15 +280,14 @@ bool ESCAASTVisitor::ProcessAssignment(clang::BinaryOperator* binop)
                 }
             }
         }
-		//ref->get
-	}
-	return true;
+        //ref->get
+    }
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl* vd)
-{
-	Cout << "\n\n";
-	vd->print(Cout);
+bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl *vd) {
+    Cout << "\n\n";
+    vd->print(llvm::nulls());
 
     auto tmp1 = vd->getTypeSourceInfo();
     auto tmp = vd->getTypeSourceInfo()->getType();
@@ -331,58 +297,56 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl* vd)
         return true;
     }
 
-	Cout << "isBlockPointerType: " 
-	<< vd->getTypeSourceInfo()->getType().getTypePtr()->isBlockPointerType() 
-	<< "\n";
+    Cout << "isBlockPointerType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isBlockPointerType()
+         << "\n";
 
-	Cout << "isAggregateType: " 
-		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isAggregateType() 
-	<< "\n";
+    Cout << "isAggregateType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isAggregateType()
+         << "\n";
 
-	Cout << "isAnyComplexType: " 
-		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyComplexType() 
-	<< "\n";
+    Cout << "isAnyComplexType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyComplexType()
+         << "\n";
 
-	Cout << "isArrayType: " 
-		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isArrayType() 
-	<< "\n";
+    Cout << "isArrayType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isArrayType()
+         << "\n";
 
-	Cout << "isDependentSizedArrayType: " 
-		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isDependentSizedArrayType() 
-	<< "\n";
+    Cout << "isDependentSizedArrayType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isDependentSizedArrayType()
+         << "\n";
 
-	Cout << "isIntegerType: " 
-		<< vd->getTypeSourceInfo()->getType().getTypePtr()->isIntegerType() 
-	<< "\n";
+    Cout << "isIntegerType: "
+         << vd->getTypeSourceInfo()->getType().getTypePtr()->isIntegerType()
+         << "\n";
 
-	Cout <<"type: " << vd->getTypeSourceInfo()->getType().getAsString();
+    Cout << "type: " << vd->getTypeSourceInfo()->getType().getAsString();
 
-	Cout << "\n\n";
+    Cout << "\n\n";
 
-	if (vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyPointerType())
-	{
-		auto name = vd->getNameAsString();
-		auto iter = variables.find(name);
-		if (iter != variables.end())
-		{
-			//Error: this variable is already declared.
-			Cout << "Variable with name " << name << " declared twice\n";
-			return true;
-		}
-		PtrCounter ptrCnt;
-		ptrCnt.count = 0;
-		ptrCnt.meta = VAR_POINTER;
-		//variables[name] = ptrCnt;
-		auto cntIter = variables.insert(pair<string, PtrCounter>(name, ptrCnt));
+    if (vd->getTypeSourceInfo()->getType().getTypePtr()->isAnyPointerType()) {
+        auto name = vd->getNameAsString();
+        auto iter = variables.find(name);
+        if (iter != variables.end()) {
+            //Error: this variable is already declared.
+            Cout << "Variable with name " << name << " declared twice\n";
+            return true;
+        }
+        PtrCounter ptrCnt{
+                .count = 0,
+                .meta = VAR_POINTER
+        };
+        //variables[name] = ptrCnt;
+        auto cntIter = variables.insert(pair<string, PtrCounter>(name, ptrCnt));
 
-		auto init = vd->getAnyInitializer();
-		if (init == nullptr)
-		{
-			return true;
-		}
-		if (!isa<CXXNewExpr>(init))
-		{
-            if (auto castSt = dyn_cast<CastExpr>(init)) {
+        auto init = vd->getAnyInitializer();
+        if (init == nullptr) {
+            return true;
+        }
+        if (!isa<CXXNewExpr>(init)) {
+            if (auto castSt = dyn_cast<CastExpr>(init))
+            {
                 init = castSt->getSubExpr();
             }
 
@@ -402,54 +366,49 @@ bool ESCAASTVisitor::ProcessDeclaration(clang::VarDecl* vd)
                     }
                 }
             }
-			return false;
-		}
+            return false;
+        }
 
-		++cntIter.first->second.count;
+        ++cntIter.first->second.count;
 
-		auto newExpr = cast<CXXNewExpr>(init);
+        auto newExpr = cast<CXXNewExpr>(init);
 
         ctx.addVarDeclNew(name, newExpr->isArray(), getLocation(newExpr));
-	}
-	return true;
+    }
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessDelete(clang::CXXDeleteExpr* del)
-{
-	auto argDel = del->getArgument();
-	//TODO: change this if by function that gives a full name of pointer or null when there is no pointer.
-	if (isa<ImplicitCastExpr>(argDel))
-	{
-		auto delCast = cast<ImplicitCastExpr>(argDel);
-		auto dexpr = delCast->getSubExpr();
-		if (isa<DeclRefExpr>(dexpr))
-		{
-			auto dptr = cast<DeclRefExpr>(dexpr);
-			string name = dptr->getNameInfo().getAsString();
+bool ESCAASTVisitor::ProcessDelete(clang::CXXDeleteExpr *del) {
+    auto argDel = del->getArgument();
+    //TODO: change this if by function that gives a full name of pointer or null when there is no pointer.
+    if (isa<ImplicitCastExpr>(argDel)) {
+        auto delCast = cast<ImplicitCastExpr>(argDel);
+        auto dexpr = delCast->getSubExpr();
+        if (isa<DeclRefExpr>(dexpr)) {
+            auto dptr = cast<DeclRefExpr>(dexpr);
+            string name = dptr->getNameInfo().getAsString();
 
             ctx.addDeleteStatement(name, del->isArrayForm());
-		}
-	}
-	return true;
+        }
+    }
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessReturn(clang::ReturnStmt* ret)
-{
-	clang::Expr* retVal = ret->getRetValue();
+bool ESCAASTVisitor::ProcessReturn(clang::ReturnStmt *ret) {
+    clang::Expr *retVal = ret->getRetValue();
 
     returnExpr = retVal;
 
-    std::string returnVarName;
+    std::string returnVarName2;
 
     //retVal->dump();
 
-    if (retVal && isa<ImplicitCastExpr>(retVal))
-    {
-        ImplicitCastExpr *ice = cast<ImplicitCastExpr>(retVal);
+    if (retVal && isa<ImplicitCastExpr>(retVal)) {
+        auto ice = cast<ImplicitCastExpr>(retVal);
         Stmt *subexpr = ice->getSubExpr();
         if (isa<DeclRefExpr>(subexpr)) //pointer
         {
-            DeclRefExpr *ref = cast<DeclRefExpr>(subexpr);
+            auto ref = cast<DeclRefExpr>(subexpr);
             DeclarationNameInfo nameInfo = ref->getNameInfo();
             DeclarationName name = nameInfo.getName();
             //name.dump();
@@ -457,33 +416,30 @@ bool ESCAASTVisitor::ProcessReturn(clang::ReturnStmt* ret)
 
             ctx.lastFoo->returnName.insert(sname);
 
-            returnVarName = sname;
+            returnVarName2 = sname;
         }
     }
 
-    ctx.addReturn(returnVarName);
+    ctx.addReturn(returnVarName2);
 
     return /*res*/true;
 }
 
-bool ESCAASTVisitor::ProcessReturnNone()
-{
-	fsm.ProcessReturnNone();
-	return true;
+bool ESCAASTVisitor::ProcessReturnNone() {
+    fsm.ProcessReturnNone();
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessReturnPtr(clang::ReturnStmt* ret)
-{
-	auto retVal = ret->getRetValue();
+bool ESCAASTVisitor::ProcessReturnPtr(clang::ReturnStmt *ret) {
+    auto retVal = ret->getRetValue();
 
-	return true;
+    return true;
 }
 
-bool ESCAASTVisitor::ProcessIf(clang::IfStmt* ifstmt)
-{
-	Cout << "If statement!\n";
+bool ESCAASTVisitor::ProcessIf(clang::IfStmt *ifstmt) {
+    Cout << "If statement!\n";
 
-	auto cond = ifstmt->getCond();
+    auto cond = ifstmt->getCond();
     {
         auto curCond = cond;
         if (auto c = dyn_cast<UnaryOperator>(curCond)) {
@@ -497,8 +453,7 @@ bool ESCAASTVisitor::ProcessIf(clang::IfStmt* ifstmt)
                 if (auto parenSt = dyn_cast<ParenExpr>(sub3)) {
                     auto sub = parenSt->getSubExpr();
                     if (auto bo = dyn_cast<BinaryOperator>(sub)) {
-                        if (bo->isAssignmentOp() == true)
-                        {
+                        if (bo->isAssignmentOp()) {
                             ProcessAssignment(bo);
                         }
                     }
@@ -506,25 +461,25 @@ bool ESCAASTVisitor::ProcessIf(clang::IfStmt* ifstmt)
             }
         }
     }
-	std::string typeS;
-	llvm::raw_string_ostream lso(typeS);
-	clang::LangOptions langOpts;
-	langOpts.CPlusPlus11 = true;
-	PrintingPolicy pol(langOpts);
-	cond->printPretty(lso, 0, pol);
-	string condStr = "~if - " + lso.str();
+    std::string typeS;
+    llvm::raw_string_ostream lso(typeS);
+    clang::LangOptions langOpts;
+    langOpts.CPlusPlus11 = true;
+    PrintingPolicy pol(langOpts);
+    cond->printPretty(lso, 0, pol);
+    string condStr = "~if - " + lso.str();
     string elseStr = "~else - " + condStr;
-	Cout << "\tCondition: " << condStr << "\n";
-	//TODO: Create the state branching.
-    Target::Statement* thenSt = nullptr;
+    Cout << "\tCondition: " << condStr << "\n";
+    //TODO: Create the state branching.
+    Target::Statement *thenSt = nullptr;
     ctx.startIfSt(&thenSt);
-	ProcessStmt(ifstmt->getThen(), false);
-	
-    Target::Statement* elseSt = nullptr;
+    ProcessStmt(ifstmt->getThen(), false);
+
+    Target::Statement *elseSt = nullptr;
     ctx.startIfSt(&elseSt);
-	ProcessStmt(ifstmt->getElse(), false);
+    ProcessStmt(ifstmt->getElse(), false);
 
     ctx.addIfStatement(thenSt, elseSt, condStr, elseStr);
 
-	return true;
+    return true;
 }

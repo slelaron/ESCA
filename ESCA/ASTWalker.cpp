@@ -4,7 +4,7 @@
 #include <clang/Basic/FileSystemOptions.h>
 #include <clang/Basic/FileManager.h>
 #include <clang/Basic/SourceManager.h>
-#include <clang/Basic/MemoryBufferCache.h>
+#include <clang/Basic/Builtins.h>
 #include <clang/Frontend/CompilerInvocation.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Lex/HeaderSearch.h>
@@ -15,7 +15,7 @@
 #include <clang/Frontend/Utils.h>
 #include <clang/Parse/ParseAST.h>
 
-#include <clang/AST/ASTContext.h>
+//#include <clang/AST/ASTContext.h>
 
 #include <llvm/Support/Host.h>
 #include <llvm/Support/raw_ostream.h>
@@ -57,19 +57,18 @@ void ASTWalker::SetIncludeDirectories()
 void ASTWalker::WalkAST(const string& path)
 {
     clang::DiagnosticOptions diagnosticOptions;
-    clang::TextDiagnosticPrinter *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(
-																llvm::outs(), &diagnosticOptions);
+    auto *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::outs(), &diagnosticOptions);
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
-    clang::DiagnosticsEngine* pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
+    auto pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
             &diagnosticOptions, pTextDiagnosticPrinter);
 
     clang::LangOptions languageOptions;
-    clang::FileSystemOptions fileSystemOptions;
+    clang::FileSystemOptions fileSystemOptions = clang::FileSystemOptions();
     clang::FileManager fileManager(fileSystemOptions);
 
     clang::SourceManager sourceManager(*pDiagnosticsEngine, fileManager);
 
-	InputKind ik(InputKind::CXX, InputKind::Source, 0);
+	InputKind ik(Language::CXX, InputKind::Source, false);
 	Triple triple;
 	clang::PreprocessorOptions ppopts;
 	CompilerInvocation::setLangDefaults(languageOptions, ik, triple, ppopts);
@@ -124,7 +123,6 @@ void ASTWalker::WalkAST(const string& path)
 
     //llvm::IntrusiveRefCntPtr<clang::PreprocessorOptions> pOpts( new clang::PreprocessorOptions());
 	auto pOpts = std::make_shared<clang::PreprocessorOptions>();
-	MemoryBufferCache mbc;
     //clang::Preprocessor preprocessor(
     //    pOpts,
     //    *pDiagnosticsEngine,
@@ -138,7 +136,6 @@ void ASTWalker::WalkAST(const string& path)
 		*pDiagnosticsEngine,
 		languageOptions,
 		sourceManager,
-		mbc,
 		headerSearch,
 		compInst);
 
@@ -158,7 +155,7 @@ void ASTWalker::WalkAST(const string& path)
 		triple
 	);
 
-	const clang::FileEntry* pFile = fileManager.getFile(path.c_str());
+	ErrorOr<const FileEntry *> pFile = fileManager.getFile(path);
     //sourceManager.createMainFileID(pFile);
 	//sourceManager.createFileID(pFile);
 
