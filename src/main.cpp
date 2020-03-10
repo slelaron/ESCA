@@ -24,7 +24,7 @@ std::set<std::string> processedFunctions;
 int main(int argc, char **argv) {
     int count = 0;
 
-    std::string root = R"(/home/alex/CLionProjects/ESCA/ESCA/resurce/)";
+    std::string root = R"(/home/alex/CLionProjects/ESCA/ESCA/resource/)";
     //name = "rtk";
     //name = "Its";
     //name = "gnss";
