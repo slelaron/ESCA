@@ -23,8 +23,7 @@ public:
 
 	void WalkAST(const std::string& path);
 
-public:
-	void DumpStmt(clang::Stmt* s);
+//	void DumpStmt(clang::Stmt* s);
 
 protected:
 	virtual void SetIncludeDirectories();

@@ -1,6 +1,6 @@
 #pragma once
 
-//#define DEBUG_OUTPUT
+#define DEBUG_OUTPUT
 
 #ifdef DEBUG_OUTPUT
 #define Cout llvm::errs()

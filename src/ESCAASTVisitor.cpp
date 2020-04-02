@@ -1,5 +1,5 @@
 #include <string>
-#include <memory>
+//#include <memory>
 #include <map>
 
 #include <llvm/Support/raw_ostream.h>
@@ -11,9 +11,9 @@
 
 #include "Variable.h"
 
-#include "FormulaSMT.h"
-#include "BinarySMT.h"
-#include "VariableSMT.h"
+//#include "FormulaSMT.h"
+//#include "BinarySMT.h"
+//#include "VariableSMT.h"
 #include "PathStorage.h"
 #include "Output.h"
 

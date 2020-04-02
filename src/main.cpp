@@ -9,10 +9,6 @@
 
 #include "file.h"
 
-#include <llvm/Support/raw_ostream.h>
-
-using namespace std;
-
 extern Target::Context ctx;
 extern std::map<std::string, Target::Function *> allFunctions;
 extern std::set<std::string> allocatedFunctions;
@@ -24,7 +20,7 @@ std::set<std::string> processedFunctions;
 int main(int argc, char **argv) {
     int count = 0;
 
-    std::string root = R"(/home/alex/CLionProjects/ESCA/ESCA/resource/)";
+    std::string resource_path = "../resource/";
     //name = "rtk";
     //name = "Its";
     //name = "gnss";
@@ -40,9 +36,10 @@ int main(int argc, char **argv) {
 //        llvm::errs() << "Parsed " << ++count << " files\n";
 //    }
 
-    std::string cpp_file = "1.cpp";
+    Cout << "Start walk";
+    std::string test_file = "1.cpp";
     ASTWalker walker;
-    walker.WalkAST(root + cpp_file);
+    walker.WalkAST(resource_path + test_file);
 
     Cout << "---------------------------------------";
     allocatedFunctions.clear();
