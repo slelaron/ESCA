@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 //        llvm::errs() << "Parsed " << ++count << " files\n";
 //    }
 
-    Cout << "Start walk";
+    std::cout << "Start walk" <<std::endl;
     std::string test_file = "1.cpp";
     ASTWalker walker;
     walker.WalkAST(resource_path + test_file);

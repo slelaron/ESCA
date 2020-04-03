@@ -18,8 +18,6 @@
 #include <clang/AST/ASTContext.h>
 
 #include <llvm/Support/Host.h>
-//#include <llvm/Support/raw_ostream.h>
-
 #include <llvm/IR/Function.h>
 
 #include "ASTWalker.h"
@@ -95,7 +93,6 @@ void ASTWalker::WalkAST(const std::string &path) {
 //        false, false);
     // */
 
-    //clang::TargetOptions targetOptions;
     auto targetOptions = std::make_shared<clang::TargetOptions>();
     targetOptions->Triple = llvm::sys::getDefaultTargetTriple();
 
@@ -112,16 +109,7 @@ void ASTWalker::WalkAST(const std::string &path) {
 
     clang::CompilerInstance compInst;
 
-    //llvm::IntrusiveRefCntPtr<clang::PreprocessorOptions> pOpts( new clang::PreprocessorOptions());
     auto pOpts = std::make_shared<clang::PreprocessorOptions>();
-    //clang::Preprocessor preprocessor(
-    //    pOpts,
-    //    *pDiagnosticsEngine,
-    //    languageOptions,
-    //    pTargetInfo,
-    //    sourceManager,
-    //    headerSearch,
-    //    compInst);
     clang::Preprocessor preprocessor(
             pOpts,
             *pDiagnosticsEngine,
@@ -130,16 +118,10 @@ void ASTWalker::WalkAST(const std::string &path) {
             headerSearch,
             compInst);
 
+    preprocessor.Initialize(*pTargetInfo);
 
     clang::FrontendOptions frontendOptions;
     clang::RawPCHContainerReader containerReader;
-
-    // TODO: тут возникает segfault, пофиксить
-    clang::InitializePreprocessor(
-            preprocessor,
-            *pOpts,
-            containerReader,
-            frontendOptions);
 
     clang::ApplyHeaderSearchOptions(
             headerSearch,
@@ -148,9 +130,18 @@ void ASTWalker::WalkAST(const std::string &path) {
             triple
     );
 
+    clang::InitializePreprocessor(
+            preprocessor,
+            *pOpts,
+            containerReader,
+            frontendOptions);
+
+
     llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(path);
-    //sourceManager.createMainFileID(pFile);
-    //sourceManager.createFileID(pFile);
+//     TODO: добваить файл в sourceManager
+//    sourceManager.setMainFileID(pFile.get());
+//    sourceManager.createMainFileID(pFile);
+//    sourceManager.createFileID(pFile);
 
     const clang::TargetInfo &targetInfo = *pTargetInfo;
 
@@ -160,10 +151,9 @@ void ASTWalker::WalkAST(const std::string &path) {
     clang::Builtin::Context builtinContext;
     builtinContext.InitializeTarget(targetInfo, nullptr);
 
-    //astContext = new ASTContext(languageOptions, sourceManager, pTargetInfo, identifierTable, selectorTable,
-    //	builtinContext, 0);
     astContext = new clang::ASTContext(languageOptions, sourceManager, identifierTable, selectorTable, builtinContext);
-
+    astContext->InitBuiltinTypes(targetInfo);
+//    astConsumer->Initialize(*astContext);
     {
         astConsumer->SetPath(path);
         pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
@@ -172,7 +162,7 @@ void ASTWalker::WalkAST(const std::string &path) {
     }
 }
 
-//void ASTWalker::DumpStmt(clang::Stmt *s) {
-//    s->dump(llvm::errs, astContext->getSourceManager());
-//    s->dump();
-//}
+void ASTWalker::DumpStmt(clang::Stmt *s) {
+    s->dump(llvm::errs(), astContext->getSourceManager());
+    s->dump();
+}

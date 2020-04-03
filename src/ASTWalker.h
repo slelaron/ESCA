@@ -23,13 +23,12 @@ public:
 
 	void WalkAST(const std::string& path);
 
-//	void DumpStmt(clang::Stmt* s);
+	void DumpStmt(clang::Stmt* s);
 
 protected:
 	virtual void SetIncludeDirectories();
 
 protected:
-	//llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions;
 	std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;
 	clang::ASTContext* astContext;
 	ESCAASTConsumer* astConsumer;

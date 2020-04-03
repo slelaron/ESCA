@@ -36,6 +36,7 @@ add_executable(ESCA main.cpp
 target_link_libraries(ESCA
         LLVM
         clangAST
+        clangLex
         clangBasic
         clangFrontend
         clangTooling
