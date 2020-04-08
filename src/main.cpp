@@ -2,10 +2,9 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-
-#include "ASTWalker.h"
-#include "DefectStorage.h"
-#include "Output.h"
+#include "AST/ASTWalker.h"
+#include "utils/DefectStorage.h"
+#include "utils/Output.h"
 
 #include "file.h"
 
@@ -20,7 +19,7 @@ std::set<std::string> processedFunctions;
 int main(int argc, char **argv) {
     int count = 0;
 
-    std::string resource_path = "../resource/";
+    std::string resource_path = "/home/alex/CLionProjects/ESCA/resource/";
     //name = "rtk";
     //name = "Its";
     //name = "gnss";
@@ -41,17 +40,16 @@ int main(int argc, char **argv) {
     ASTWalker walker;
     walker.WalkAST(resource_path + test_file);
 
-    Cout << "---------------------------------------";
-    allocatedFunctions.clear();
-    allocatedFunctions.insert(std::string("malloc"));
+    std::cout  << "---------------------------------------" << std::endl;
+//    allocatedFunctions.clear();
+//    allocatedFunctions.insert(std::string("new"));
 
-    count = 0;
     for (auto p : allFunctions) {
         staticFuncMapping.clear();
         p.second->process();
     }
 
-    DefectStorage::Instance().SaveDefects();
+//    DefectStorage::Instance().SaveDefects();
 
     return 0;
 }

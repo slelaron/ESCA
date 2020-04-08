@@ -5,31 +5,65 @@
 
 enum EMetaType
 {
-	VAR_COMMON,
-	VAR_POINTER,
-	VAR_ARRAY_POINTER,
-	VAR_UNKNOWN,
+    VAR_COMMON,
+    VAR_POINTER,
+    VAR_ARRAY_POINTER,
+    VAR_UNKNOWN,
+};
+
+struct PtrCounter
+{
+    int count;
+    EMetaType meta;
 };
 
 class Variable
 {
 public:
-    Variable() = default;
-	Variable(const Variable& v) = default;
-	Variable (const std::string& t, const std::string& n, const std::string& l, EMetaType mt) : name(n), type(t), loc(l), metaType(mt) { }
+    Variable() = default; // TODO: make it delete
 
-	inline std::string Name() const { return name; }
-	inline std::string Type() const { return type; }
-	inline EMetaType MetaType() const { return metaType; }
-	inline void MetaType(EMetaType mt) { metaType = mt; }
+    Variable( const Variable &v ) = default;
 
-    std::string getLocation() const { return loc; }
-    void setLocation(const std::string& l) { loc = l; }
+    Variable( const std::string &type, const std::string &name, const std::string &loc, EMetaType mt )
+            : name(name), type(type), loc(loc), metaType(mt)
+    {
+    }
 
-	std::string TypeSMT() const;
+    inline std::string Name() const
+    {
+        return name;
+    }
+
+    inline std::string Type() const
+    {
+        return type;
+    }
+
+    inline EMetaType MetaType() const
+    {
+        return metaType;
+    }
+
+    inline void MetaType( EMetaType mt )
+    {
+        metaType = mt;
+    }
+
+    std::string getLocation() const
+    {
+        return loc;
+    }
+
+    void setLocation( const std::string &l )
+    {
+        loc = l;
+    }
+
+    std::string TypeSMT() const;
+
 protected:
-	std::string name;
-	std::string type;
+    std::string name;
+    std::string type;
     std::string loc;
     EMetaType metaType;
 };

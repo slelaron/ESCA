@@ -8,17 +8,31 @@
 class VersionedVariable : public Variable
 {
 public:
-    VersionedVariable() = default;
-	VersionedVariable(const VersionedVariable& vv) = default;
-	VersionedVariable(const std::string& t, const std::string& n, const std::string& l, EMetaType mt, int ver) : Variable(t, n, l, mt), version(ver) {}
+    VersionedVariable() = default; // TODO : make it delete
 
-	inline int Version() const { return version; }
-	inline std::string VersionedName() const { std::stringstream ss; ss << name << "!" << version; return ss.str(); }
+    VersionedVariable( const VersionedVariable &vv ) = default;
+
+    VersionedVariable( const std::string &t, const std::string &n, const std::string &l, EMetaType mt, int ver )
+            : Variable(t, n, l, mt), version(ver)
+    {
+    }
+
+    inline int Version() const
+    {
+        return version;
+    }
+
+    inline std::string VersionedName() const
+    {
+        return name + "!" + std::to_string(version);
+    }
 
 private:
-	int version;
+    int version;
 };
 
-bool operator ==(const VersionedVariable& lhs, const VersionedVariable& rhs);
-bool operator <(const VersionedVariable& lhs, const VersionedVariable& rhs);
+bool operator==( const VersionedVariable &lhs, const VersionedVariable &rhs );
+
+bool operator<( const VersionedVariable &lhs, const VersionedVariable &rhs );
+
 #endif

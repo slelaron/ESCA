@@ -24,27 +24,52 @@
 #include "ESCAASTConsumer.h"
 
 ASTWalker::ASTWalker()
-        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer) {
+        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer)
+{
     astConsumer->SetWalker(this);
 }
 
-ASTWalker::~ASTWalker() {
+ASTWalker::~ASTWalker()
+{
     delete astConsumer;
     delete astContext;
 }
 
-void ASTWalker::SetIncludeDirectories() {
-    //headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
-    //	false, false);
-    //headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
-    //	false, false);
-    //headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
-    //	false, false);
-    //headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
-    //	false, false);
+void ASTWalker::SetIncludeDirectories( bool ignore_sys_root = false, bool is_framework = false )
+{
+    std::vector<std::string> paths;
+//    headerSearchOptions->ResourceDir = "/usr/include/c++/7/include/";
+    paths = {
+            "/usr/include/",
+            "/usr/include/c++/7/",
+            "/usr/include/x86_64-linux-gnu/",
+            "/usr/include/x86_64-linux-gnu/c++/7/",
+            "/usr/lib/gcc/x86_64-linux-gnu/7/include/"
+    };
+#ifdef __linux__
+#endif
+#ifdef _WIN32
+
+    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
+    //        false, false);
+    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
+    //        false, false);
+    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
+    //        false, false);
+    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
+    //        false, false);
+#endif
+
+    for( const auto &path : paths )
+    {
+//        headerSearchOptions->AddSystemHeaderPrefix(path, true);
+//        headerSearchOptions->AddPath(path, clang::frontend::System, is_framework, ignore_sys_root);
+        headerSearchOptions->AddPath(path, clang::frontend::Angled, is_framework, ignore_sys_root);
+    }
 }
 
-void ASTWalker::WalkAST(const std::string &path) {
+void ASTWalker::WalkAST( const std::string &path )
+{
     clang::DiagnosticOptions diagnosticOptions;
     auto *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::outs(), &diagnosticOptions);
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
@@ -63,39 +88,10 @@ void ASTWalker::WalkAST(const std::string &path) {
     clang::CompilerInvocation::setLangDefaults(languageOptions, ik, triple, ppopts);
     languageOptions.ImplicitInt = 1;
 
-//	SetIncludeDirectories();
-//    llvm::IntrusiveRefCntPtr<clang::HeaderSearchOptions> headerSearchOptions(new clang::HeaderSearchOptions());
-//    /*
-//        headerSearchOptions->ResourceDir = "/opt/llvm_build" "/lib/clang/" CLANG_VERSION_STRING;
-    // <Warning!!> -- Platform Specific Code lives here
-    // This depends on A) that you're running linux and
-    // B) that you have the same GCC LIBs installed that
-    // I do.
-    // Search through Clang itself for something like this,
-    // go on, you won't find it. The reason why is Clang
-    // has its own versions of std* which are installed under
-    // /usr/local/lib/clang/<version>/include/
-    // See somewhere around Driver.cpp:77 to see Clang adding
-    // its version of the headers to its include path.
-//    for (int i = 2; i < argc; i++)
-//    {
-//        headerSearchOptions->AddPath(argv[i], clang::frontend::Angled, false, false);
-//    }
-    // </Warning!!> -- End of Platform Specific Code
-
-//    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
-//        false, false);
-//    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
-//        false, false);
-//    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
-//        false, false);
-//    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
-//        false, false);
-    // */
-
+    SetIncludeDirectories();
     auto targetOptions = std::make_shared<clang::TargetOptions>();
     targetOptions->Triple = llvm::sys::getDefaultTargetTriple();
-
+    targetOptions->CPU = llvm::sys::getHostCPUName();
     clang::TargetInfo *pTargetInfo =
             clang::TargetInfo::CreateTargetInfo(
                     *pDiagnosticsEngine,
@@ -138,11 +134,9 @@ void ASTWalker::WalkAST(const std::string &path) {
 
 
     llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(path);
-//     TODO: добваить файл в sourceManager
-//    sourceManager.setMainFileID(pFile.get());
-//    sourceManager.createMainFileID(pFile);
-//    sourceManager.createFileID(pFile);
-
+//    clang::SourceLocation sourceLocation;
+    auto mainID = sourceManager.getOrCreateFileID(pFile.get(), clang::SrcMgr::C_System);
+    sourceManager.setMainFileID(mainID);
     const clang::TargetInfo &targetInfo = *pTargetInfo;
 
     clang::IdentifierTable identifierTable(languageOptions);
@@ -158,11 +152,12 @@ void ASTWalker::WalkAST(const std::string &path) {
         astConsumer->SetPath(path);
         pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
         clang::ParseAST(preprocessor, astConsumer, *astContext);
-        pTextDiagnosticPrinter->EndSourceFile(); 
+        pTextDiagnosticPrinter->EndSourceFile();
     }
 }
 
-void ASTWalker::DumpStmt(clang::Stmt *s) {
+void ASTWalker::DumpStmt( clang::Stmt *s )
+{
     s->dump(llvm::errs(), astContext->getSourceManager());
     s->dump();
 }

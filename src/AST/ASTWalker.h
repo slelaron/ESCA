@@ -12,6 +12,7 @@ namespace clang
 {
 	class ASTContext;
 }
+
 class ESCAASTConsumer;
 
 
@@ -26,7 +27,7 @@ public:
 	void DumpStmt(clang::Stmt* s);
 
 protected:
-	virtual void SetIncludeDirectories();
+	void SetIncludeDirectories(bool, bool);
 
 protected:
 	std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;

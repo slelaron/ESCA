@@ -2,7 +2,7 @@
 #define EQUALSMT_H
 
 #include "FormulaSMT.h"
-#include "VersionedVariable.h"
+#include "../VersionedVariable.h"
 
 enum OperatorSMT
 {
@@ -14,7 +14,7 @@ enum OperatorSMT
 class BinarySMT : public FormulaSMT
 {
 public:
-	BinarySMT() : FormulaSMT() {}
+//	BinarySMT() : FormulaSMT() {}
 	BinarySMT(const VersionedVariable& l, const VersionedVariable& r, OperatorSMT o, bool n);
 	virtual std::string FormatSMTLIB();
 
