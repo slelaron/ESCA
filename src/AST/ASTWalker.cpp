@@ -39,6 +39,7 @@ void ASTWalker::SetIncludeDirectories( bool ignore_sys_root = false, bool is_fra
 {
     std::vector<std::string> paths;
 //    headerSearchOptions->ResourceDir = "/usr/include/c++/7/include/";
+#ifdef __linux__
     paths = {
             "/usr/include/",
             "/usr/include/c++/7/",
@@ -46,10 +47,8 @@ void ASTWalker::SetIncludeDirectories( bool ignore_sys_root = false, bool is_fra
             "/usr/include/x86_64-linux-gnu/c++/7/",
             "/usr/lib/gcc/x86_64-linux-gnu/7/include/"
     };
-#ifdef __linux__
 #endif
 #ifdef _WIN32
-
     //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
     //        false, false);
     //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
@@ -62,6 +61,7 @@ void ASTWalker::SetIncludeDirectories( bool ignore_sys_root = false, bool is_fra
 
     for( const auto &path : paths )
     {
+        // TODO: разобраться почему идет проверка и вывод информации о системных либах
 //        headerSearchOptions->AddSystemHeaderPrefix(path, true);
 //        headerSearchOptions->AddPath(path, clang::frontend::System, is_framework, ignore_sys_root);
         headerSearchOptions->AddPath(path, clang::frontend::Angled, is_framework, ignore_sys_root);

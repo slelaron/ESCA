@@ -3,23 +3,26 @@
 #include <string>
 #include <fstream>
 #include "AST/ASTWalker.h"
-#include "utils/DefectStorage.h"
-#include "utils/Output.h"
+//#include "utils/DefectStorage.h"
+//#include "utils/Output.h"
 
 #include "file.h"
 
-extern Target::Context ctx;
-extern std::map<std::string, Target::Function *> allFunctions;
-extern std::set<std::string> allocatedFunctions;
+//extern Target::Context ctx;
+//extern std::map<std::string, Target::Function *> allFunctions;
+//extern std::set<std::string> allocatedFunctions;
 
 extern std::map<std::string, std::string> staticFuncMapping;
 
-std::set<std::string> processedFunctions;
+//std::set<std::string> processedFunctions;
 
-int main(int argc, char **argv) {
-    int count = 0;
+int main( int argc, char **argv )
+{
+//    int count = 0;
 
     std::string resource_path = "/home/alex/CLionProjects/ESCA/resource/";
+    std::string test_file = "1.cpp";
+
     //name = "rtk";
     //name = "Its";
     //name = "gnss";
@@ -35,16 +38,16 @@ int main(int argc, char **argv) {
 //        llvm::errs() << "Parsed " << ++count << " files\n";
 //    }
 
-    std::cout << "Start walk" <<std::endl;
-    std::string test_file = "1.cpp";
+    std::cout << "Start walk" << std::endl;
     ASTWalker walker;
     walker.WalkAST(resource_path + test_file);
 
-    std::cout  << "---------------------------------------" << std::endl;
+    std::cout << "---------------------------------------" << std::endl;
 //    allocatedFunctions.clear();
 //    allocatedFunctions.insert(std::string("new"));
 
-    for (auto p : allFunctions) {
+    for( auto p : allFunctions )
+    {
         staticFuncMapping.clear();
         p.second->process();
     }

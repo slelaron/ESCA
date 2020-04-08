@@ -15,7 +15,7 @@ namespace Target
 extern std::set<std::string> allocatedFunctions;
 extern std::map<std::string, Target::Function *> allFunctions;
 
-extern std::set<std::string> processedFunctions;
+std::set<std::string> processedFunctions;
 
 namespace Target
 {
@@ -144,9 +144,10 @@ namespace Target
 
         void process( ProcessCtx &ctx ) override
         {
-            PtrCounter ptrCnt;
-            ptrCnt.count = 0;
-            ptrCnt.meta = VAR_POINTER;
+            PtrCounter ptrCnt = {
+                    0,
+                    VAR_POINTER
+            };
             //variables[name] = ptrCnt;
             auto cntIter = ctx.variables.insert(std::make_pair(varName, ptrCnt));
 
@@ -157,7 +158,7 @@ namespace Target
 
                 // TODO: поддержать как царь разные варианты для массива и просто указателя
                 StateFSM state;
-                std::string type = "";
+                std::string type;
                 VersionedVariable vv(type, varName, loc, VAR_POINTER, 1);
                 {
                     state.allocPointers.push_back(vv);
@@ -188,17 +189,17 @@ namespace Target
 
         void process( ProcessCtx &ctx ) override
         {
-            PtrCounter ptrCnt;
-            ptrCnt.count = 0;
-            ptrCnt.meta = VAR_POINTER;
+            PtrCounter ptrCnt = {
+                    0,
+                    VAR_POINTER
+            };
             //variables[name] = ptrCnt;
-            auto cntIter = ctx.variables.insert(std::make_pair(varName, ptrCnt));
+            auto cntIter = ctx.variables.insert({varName, ptrCnt});
 
             ++cntIter.first->second.count;
 
             StateFSM state;
-            std::string type = "";
-            VersionedVariable vv(type, varName, loc, VAR_POINTER, 1);
+            VersionedVariable vv("", varName, loc, VAR_POINTER, 1);
 
             if( isArray ) //Declaration of array
             {
@@ -242,8 +243,7 @@ namespace Target
             if( allocatedFunctions.find(fooName) != allocatedFunctions.end())
             {
                 StateFSM state;
-                std::string type = "";
-                VersionedVariable vv(type, varName, loc, VAR_POINTER, lhsCnt.count);
+                VersionedVariable vv("", varName, loc, VAR_POINTER, lhsCnt.count);
                 {
                     state.allocPointers.push_back(vv);
                     lhsCnt.meta = VAR_POINTER;
@@ -326,8 +326,7 @@ namespace Target
             int lhsVer = ++(lhsCnt.count);
 
             StateFSM state;
-            std::string type = "";
-            VersionedVariable vv(type, varName, loc, VAR_POINTER, lhsCnt.count);
+            VersionedVariable vv("", varName, loc, VAR_POINTER, lhsCnt.count);
             if( isArray )
             {
                 vv.MetaType(VAR_ARRAY_POINTER);
@@ -405,7 +404,7 @@ namespace Target
             }
 
             // process all callee
-            for( auto c : callee )
+            for( const auto &c : callee )
             {
                 if( allFunctions.find(c) == allFunctions.end())
                 {
@@ -422,7 +421,7 @@ namespace Target
             }
 
             // process
-            ProcessCtx ctx;
+            ProcessCtx ctx{};
             ctx.fsm.FunctionName(name);
             static int x = 123;
             if( name == "SCR_ScreenShot_f_1" )

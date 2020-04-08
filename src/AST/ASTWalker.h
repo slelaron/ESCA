@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <clang/Lex/HeaderSearchOptions.h>
 #include <clang/AST/Stmt.h>
 #include <clang/AST/ASTContext.h>
