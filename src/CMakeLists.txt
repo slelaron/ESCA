@@ -1,7 +1,7 @@
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Clang REQUIRED CONFIG)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+#add_compile_options(-Wall -Wextra)
 
 #set(CMAKE_BUILD_TYPE "Debug")
 message(STATUS "Found LLVM: ${LLVM_PACKAGE_VERSION}")
@@ -14,32 +14,20 @@ include_directories(${CLANG_INCLUDE_DIRS})
 #add_definitions(${LLVM_DEFINITIONS})
 #add_definitions(${CLANG_DEFINITIONS})
 
-
-add_library(ast SHARED
-        AST/ASTWalker.cpp
-        AST/ESCAASTConsumer.cpp
-        AST/ESCAASTVisitor.cpp
-        )
+add_subdirectory(AST)
 
 add_library(fsm SHARED
         FSM/FSM.cpp
-        FSM/FSMStorage.cpp
         FSM/StateFSM.cpp
-        FSM/TransitionFSM.cpp
         )
 
 add_library(smt SHARED
         SMT/BinarySMT.cpp
         SMT/VariableSMT.cpp
+        SMT/VersionedVariable.cpp
         )
 
-add_executable(ESCA main.cpp
-        utils/DefectStorage.cpp
-        Variable.cpp
-        VersionedVariable.cpp
-        #        Sort.cpp  -- почему-то нигде не используется
-        #        patch/patchs.cpp
-        )
+add_executable(ESCA main.cpp)
 
 
 target_link_libraries(ESCA

@@ -1,18 +1,28 @@
 #ifndef VARIABLESMT_H
 #define VARIABLESMT_H
 
+#include <memory>
+
 #include "FormulaSMT.h"
-#include "../VersionedVariable.h"
 
 class VariableSMT : public FormulaSMT
 {
 public:
-	std::string FormatSMTLIB() override;
+    std::string FormatSMTLIB() override;
 
-	inline void Var(const VersionedVariable& v) { var = v; }
-	inline VersionedVariable Var() { return var; }
+    explicit VariableSMT( const VersionedVariable &v )
+    {
+        var = std::make_unique<VersionedVariable>(v);
+    }
+
+    inline VersionedVariable Var()
+    {
+        return *var;
+    }
+
+
 private:
-	VersionedVariable var;
+    std::unique_ptr<VersionedVariable> var;
 };
 
 #endif

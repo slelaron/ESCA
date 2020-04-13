@@ -1,12 +1,12 @@
 #ifndef FORMULASMT_H
 #define FORMULASMT_H
 
-#include <string>
+#include "VersionedVariable.h"
 
 class FormulaSMT
 {
 public:
-	virtual std::string FormatSMTLIB() = 0;
+    virtual std::string FormatSMTLIB() = 0;
 };
 
 #endif

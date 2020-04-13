@@ -1,25 +1,17 @@
-#include <vector>
 #include <iostream>
 #include <string>
-#include <fstream>
-#include "AST/ASTWalker.h"
-//#include "utils/DefectStorage.h"
-//#include "utils/Output.h"
+#include <filesystem>
 
+#include "AST/ASTWalker.h"
 #include "file.h"
 
-//extern Target::Context ctx;
-//extern std::map<std::string, Target::Function *> allFunctions;
-//extern std::set<std::string> allocatedFunctions;
+namespace fs = std::filesystem;
 
 extern std::map<std::string, std::string> staticFuncMapping;
 
-//std::set<std::string> processedFunctions;
 
 int main( int argc, char **argv )
 {
-//    int count = 0;
-
     std::string resource_path = "/home/alex/CLionProjects/ESCA/resource/";
     std::string test_file = "1.cpp";
 
@@ -38,8 +30,22 @@ int main( int argc, char **argv )
 //        llvm::errs() << "Parsed " << ++count << " files\n";
 //    }
 
-    std::cout << "Start walk" << std::endl;
     ASTWalker walker;
+#ifdef __linux__
+    std::vector<std::string> paths = {
+            "/usr/include/",
+            "/usr/include/c++/9/",
+            "/usr/include/x86_64-linux-gnu/",
+            "/usr/include/x86_64-linux-gnu/c++/7/",
+            "/usr/lib/gcc/x86_64-linux-gnu/7/include/"
+    };
+    walker.SetIncludeDirectories(paths);
+#endif
+
+    std::cout << "Start walk" << std::endl;
+
+    freopen("debug_info.txt", "w", stdout); // всякий мусор будем выводить в файл
+
     walker.WalkAST(resource_path + test_file);
 
     std::cout << "---------------------------------------" << std::endl;

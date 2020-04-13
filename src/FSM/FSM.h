@@ -1,17 +1,10 @@
 #ifndef FSM_H
 #define FSM_H
 
-#include <vector>
-#include <deque>
-#include <map>
-#include <memory>
 #include <set>
 
-#include "StateFSM.h"
 #include "TransitionFSM.h"
 #include "LeafPredicate.h"
-#include "../VersionedVariable.h"
-#include "../SMT/FormulaSMT.h"
 
 typedef std::vector<StateFSM> StatesStorage;
 typedef std::vector<TransitionFSM> TransitionsStorage;
@@ -90,8 +83,6 @@ public:
 
     void ProcessReturnNone();
 
-
-public:
     void SetReturnVarName( const std::set<std::string> &varName )
     {
         returnVarName = varName;
@@ -109,12 +100,7 @@ public:
         return isAllocReturns;
     }
 
-private:
-    std::set<std::string> returnVarName;
-    bool isAllocReturns = false;
-
 #ifdef DEBUG
-public: //debug
 
     void SaveToXML();
 
@@ -122,7 +108,11 @@ public: //debug
 
 #endif
 
-private://internal functions
+private:
+    std::set<std::string> returnVarName;
+    bool isAllocReturns = false;
+
+//internal functions
     void CreateStart();
 
     void HandleDeletePtr( const VersionedVariable &v, std::vector<VersionedVariable> &alloc,
@@ -134,7 +124,7 @@ private://internal functions
 
     bool MatchEvents( FSMID stateID );
 
-private: //member variables
+//member variables
     std::string functionName;
     StatesStorage states;
     TransitionsStorage transitions;

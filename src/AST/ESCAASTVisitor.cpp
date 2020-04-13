@@ -1,43 +1,35 @@
 #include <string>
-//#include <memory>
 #include <map>
+#include <vector>
+#include <set>
 
 #include <llvm/Support/raw_ostream.h>
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/ASTContext.h>
 
 #include "ESCAASTVisitor.h"
-#include "ASTWalker.h"
-
-#include "../Variable.h"
 
 #include "PathStorage.h"
-#include "../utils/Output.h"
-
-#include "../file.h"
+#include "Output.h"
 
 
 std::map<std::string, std::string> staticFuncMapping;
 
-
 std::set<std::string> allocatedFunctions;
 
-std::map<std::string, Target::Function *> allFunctions;
+std::map<std::string, Target::Function*> allFunctions;
 
-Target::Context ctx;
-
-
-clang::SourceManager *currSM = nullptr;
+std::set<std::string> processedFunctions;
 
 
-std::string getLocation( const clang::Stmt *st )
+std::string ESCAASTVisitor::getLocation( const clang::Stmt *st )
 {
     auto loc = st->getBeginLoc();
     return loc.printToString(*currSM);
 }
 
 
-ESCAASTVisitor::ESCAASTVisitor() : walker(nullptr), path(new PathStorage)
+ESCAASTVisitor::ESCAASTVisitor() : path(new PathStorage)
 {
 }
 
@@ -61,7 +53,7 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
     loc.print(llvm::nulls(), sm);
     auto lstr = loc.printToString(sm);
     Cout << "\ngetFromPtrEncoding dump:\n";
-    loc.getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
+    clang::SourceLocation::getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
     Cout << "\nlocation string: " << lstr << "\n";
 
     PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
@@ -96,6 +88,7 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
         ProcessStmt(body);
         // lazy
         //ProcessReturnNone();
+
         Reset();
     }
 
@@ -547,7 +540,7 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     clang::LangOptions langOpts;
     langOpts.CPlusPlus11 = true;
     PrintingPolicy pol(langOpts);
-    cond->printPretty(lso, 0, pol);
+    cond->printPretty(lso, nullptr, pol);
     std::string condStr = "~if - " + lso.str();
     std::string elseStr = "~else - " + condStr;
     Cout << "\tCondition: " << condStr << "\n";

@@ -1,23 +1,13 @@
 #ifndef ESCAASTVisitor_H
 #define ESCAASTVisitor_H
 
-#include <map>
-#include <vector>
-#include <memory>
-#include <string>
-#include <set>
-
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
 
-#include "../VersionedVariable.h"
-#include "../FSM/FSM.h"
-#include "../FSM/LeafPredicate.h"
 #include "PathStorage.h"
+#include "../file.h"
 
-
-class ASTWalker;
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 {
@@ -27,10 +17,6 @@ public:
     bool VisitFunctionDecl( clang::FunctionDecl *f );
 
 public:
-    inline void SetWalker( ASTWalker *ast_walker )
-    {
-        walker = ast_walker;
-    }
 
     inline void SetPath( const std::string &_path )
     {
@@ -38,6 +24,8 @@ public:
     }
 
 private:
+    std::string getLocation( const clang::Stmt *st );
+
     void Reset();
 
     bool ProcessFunction( clang::FunctionDecl *f );
@@ -57,9 +45,12 @@ private:
     bool ProcessIf( clang::IfStmt *ifstmt );
 
     bool ProcessReturnNone(); //Pointers are not returned.
+
     bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
 private:
-    ASTWalker *walker;
+    Target::Context ctx;
+    clang::SourceManager *currSM = nullptr;
+
     std::shared_ptr<PathStorage> path;
 
     //std::map<std::string, std::vector<VersionedVariable> > variables;

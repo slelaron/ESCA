@@ -1,3 +1,4 @@
+/// очередной неизвестный файл
 #ifndef FSM_STORAGE_H
 #define FSM_STORAGE_H
 
@@ -5,7 +6,6 @@
 #include <string>
 
 #include "FSM.h"
-
 typedef std::unordered_map<std::string, FSM> FSMMap;
 
 class FSMStorage

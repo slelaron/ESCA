@@ -3,7 +3,7 @@
 
 #include <set>
 
-#include "../VersionedVariable.h"
+#include "VersionedVariable.h"
 
 class SMTSet
 {

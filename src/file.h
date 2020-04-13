@@ -2,9 +2,8 @@
 #include <memory>
 #include <map>
 
-#include "SMT/VariableSMT.h"
 #include "FSM/FSM.h"
-#include "FSM/LeafPredicate.h"
+#include "SMT/VariableSMT.h"
 #include "SMT/BinarySMT.h"
 
 namespace Target
@@ -15,7 +14,7 @@ namespace Target
 extern std::set<std::string> allocatedFunctions;
 extern std::map<std::string, Target::Function *> allFunctions;
 
-std::set<std::string> processedFunctions;
+extern std::set<std::string> processedFunctions;
 
 namespace Target
 {
@@ -52,9 +51,8 @@ namespace Target
 
         void process( ProcessCtx &ctx ) override
         {
-            std::string type;
             auto cntIter = ctx.variables.find(name);
-            VersionedVariable vv(type, name, "unused", cntIter->second.meta, cntIter->second.count);
+            VersionedVariable vv(name, "unused", cntIter->second.meta, cntIter->second.count);
 
             ctx.fsm.AddDeleteState(vv, isArray);
         }
@@ -68,9 +66,7 @@ namespace Target
     class CompoundStatement : public Statement
     {
     public:
-        CompoundStatement()
-        {
-        }
+        CompoundStatement() = default;
 
         void addState( Statement *st )
         {
@@ -158,14 +154,12 @@ namespace Target
 
                 // TODO: поддержать как царь разные варианты для массива и просто указателя
                 StateFSM state;
-                std::string type;
-                VersionedVariable vv(type, varName, loc, VAR_POINTER, 1);
+                VersionedVariable vv(varName, loc, VAR_POINTER, 1);
                 {
                     state.allocPointers.push_back(vv);
                 }
                 //Отметить функцию как new.
-                std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
-                vvForm->Var(vv);
+                std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
                 state.formulae.push_back(vvForm);
 
                 ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
@@ -199,7 +193,7 @@ namespace Target
             ++cntIter.first->second.count;
 
             StateFSM state;
-            VersionedVariable vv("", varName, loc, VAR_POINTER, 1);
+            VersionedVariable vv(varName, loc, VAR_POINTER, 1);
 
             if( isArray ) //Declaration of array
             {
@@ -213,8 +207,7 @@ namespace Target
             }
             ctx.allocated.push_back(vv);
 
-            std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
-            vvForm->Var(vv);
+            std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
             state.formulae.push_back(vvForm);
 
             ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
@@ -243,7 +236,7 @@ namespace Target
             if( allocatedFunctions.find(fooName) != allocatedFunctions.end())
             {
                 StateFSM state;
-                VersionedVariable vv("", varName, loc, VAR_POINTER, lhsCnt.count);
+                VersionedVariable vv(varName, loc, VAR_POINTER, lhsCnt.count);
                 {
                     state.allocPointers.push_back(vv);
                     lhsCnt.meta = VAR_POINTER;
@@ -251,8 +244,7 @@ namespace Target
                 //Отметить new.
                 ctx.allocated.push_back(vv);
 
-                std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
-                vvForm->Var(vv);
+                std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
                 state.formulae.push_back(vvForm);
 
                 ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
@@ -281,18 +273,16 @@ namespace Target
             int lhsVer = ++(lhsCnt.count);
 
             StateFSM state;
-            VersionedVariable lhsVar("", varName, loc, VAR_POINTER, lhsVer);
+            VersionedVariable lhsVar(varName, loc, VAR_POINTER, lhsVer);
             //VariableSMT *lhsForm = new VariableSMT();
-            std::shared_ptr<VariableSMT> lhsForm(new VariableSMT());
-            lhsForm->Var(lhsVar);
+            std::shared_ptr<VariableSMT> lhsForm(new VariableSMT(lhsVar));
             state.formulae.push_back(lhsForm);
 
             PtrCounter &rhsCnt = ctx.variables[ rhsName ];
             int rhsVer = rhsCnt.count;
-            VersionedVariable rhsVar("", rhsName, loc, VAR_POINTER, rhsVer);
+            VersionedVariable rhsVar(rhsName, loc, VAR_POINTER, rhsVer);
             //VariableSMT *rhsForm = new VariableSMT();
-            std::shared_ptr<VariableSMT> rhsForm(new VariableSMT());
-            rhsForm->Var(rhsVar);
+            std::shared_ptr<VariableSMT> rhsForm(new VariableSMT(rhsVar));
             state.formulae.push_back(rhsForm);
             lhsCnt.meta = rhsCnt.meta;
 
@@ -326,7 +316,7 @@ namespace Target
             int lhsVer = ++(lhsCnt.count);
 
             StateFSM state;
-            VersionedVariable vv("", varName, loc, VAR_POINTER, lhsCnt.count);
+            VersionedVariable vv( varName, loc, VAR_POINTER, lhsCnt.count);
             if( isArray )
             {
                 vv.MetaType(VAR_ARRAY_POINTER);
@@ -341,8 +331,7 @@ namespace Target
             //Отметить new.
             ctx.allocated.push_back(vv);
 
-            std::shared_ptr<VariableSMT> vvForm(new VariableSMT());
-            vvForm->Var(vv);
+            std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
             state.formulae.push_back(vvForm);
 
             ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
@@ -393,7 +382,7 @@ namespace Target
     class Function
     {
     public:
-        using FooPtr = std::shared_ptr<Function>;
+//        using FooPtr = std::shared_ptr<Function>;
 
         void process()
         {
@@ -421,13 +410,14 @@ namespace Target
             }
 
             // process
-            ProcessCtx ctx{};
+            ProcessCtx ctx;
             ctx.fsm.FunctionName(name);
             static int x = 123;
             if( name == "SCR_ScreenShot_f_1" )
             {
                 ++x;
             }
+///         ?????
             statement->process(ctx);
 
             if( !returnName.empty())
@@ -447,7 +437,7 @@ namespace Target
         std::set<std::string> returnName;
     };
 
-
+// TODO: выяснить зачем этот класс
     class Module
     {
     public:
@@ -507,6 +497,7 @@ namespace Target
         void addFoo()
         {
             lastFoo = module.addFoo();
+//            lastFoo = Function();
         }
 
         void addToLast( Statement *s )
@@ -534,7 +525,7 @@ namespace Target
         }
 
         //    просто создаем набор стейтов и добавляем его на вершину стэка,
-        // не пуша некуда, для пуша в контекст есть отдельный метод
+        // не пуша никуда, для пуша в контекст есть отдельный метод
         Statement *createCompoundStatement( bool addToStates = true )
         {
             //addToStates = true;

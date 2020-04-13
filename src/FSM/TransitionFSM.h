@@ -1,19 +1,27 @@
 #ifndef TRANSITIONFSM_H
 #define TRANSITIONFSM_H
 
-#include <string>
-
 #include "TypesFSM.h"
 
 class TransitionFSM
 {
 public:
-	FSMID id;
-	FSMID start;
-	FSMID end;
+    FSMID id;
+    FSMID start;
+    FSMID end;
 
-	std::string evt;
-	static const std::string EPSILON;
+    std::string evt;
+
+    bool operator==( const TransitionFSM &rhs )
+    {
+        return this->id == rhs.id;
+    }
+
+    bool operator<( const TransitionFSM &rhs )
+    {
+        return this->id < rhs.id;
+    }
+
 };
 
 bool operator ==(const TransitionFSM& lhs, const TransitionFSM& rhs);

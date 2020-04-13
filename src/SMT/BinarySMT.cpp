@@ -2,8 +2,6 @@
 
 #include "BinarySMT.h"
 
-using namespace std;
-
 BinarySMT::BinarySMT(const VersionedVariable& l, const VersionedVariable& r, OperatorSMT o, bool n) 
     : FormulaSMT()
     , lhs(l)
@@ -13,9 +11,9 @@ BinarySMT::BinarySMT(const VersionedVariable& l, const VersionedVariable& r, Ope
 {
 }
 
-string BinarySMT::FormatSMTLIB()
+std::string BinarySMT::FormatSMTLIB()
 {
-	string sop;
+	std::string sop;
 	switch (op)
 	{
 	case EqualSMT:
@@ -31,15 +29,15 @@ string BinarySMT::FormatSMTLIB()
 		sop = "= ";
 	}
 
-	string negBeg;// =
-	string negEnd;// = ")";
+	std::string negBeg;// =
+	std::string negEnd;// = ")";
 	if (negation)
 	{
 		negBeg = "not (";
 		negEnd = ")";
 	}
 
-	stringstream ss;
+	std::stringstream ss;
 	ss << "(assert( " << negBeg << sop << lhs.VersionedName() << " " << rhs.VersionedName() << ")" << negEnd << ")\n";
 	return ss.str();
 }

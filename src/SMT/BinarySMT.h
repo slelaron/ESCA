@@ -2,37 +2,67 @@
 #define EQUALSMT_H
 
 #include "FormulaSMT.h"
-#include "../VersionedVariable.h"
 
 enum OperatorSMT
 {
-	EqualSMT,
-	LessSMT,
-	GreaterSMT
+    EqualSMT,
+    LessSMT,
+    GreaterSMT
 };
 
 class BinarySMT : public FormulaSMT
 {
 public:
 //	BinarySMT() : FormulaSMT() {}
-	BinarySMT(const VersionedVariable& l, const VersionedVariable& r, OperatorSMT o, bool n);
-	virtual std::string FormatSMTLIB();
+    BinarySMT( const VersionedVariable &l, const VersionedVariable &r, OperatorSMT o, bool n );
 
-	inline void Lhs(const VersionedVariable& l) { lhs = l; }
-	inline VersionedVariable Lhs() const {return lhs; }
-	inline void Rhs(const VersionedVariable& r) { rhs = r; }
-	inline VersionedVariable Rhs() const {return rhs; }
+    std::string FormatSMTLIB() override;
 
-	inline void Op(OperatorSMT o) { op = o; }
-	inline OperatorSMT Op() const { return op; }
+    inline void Lhs( const VersionedVariable &l )
+    {
+        lhs = l;
+    }
 
-	inline void Negation(bool n) { negation = n; }
-	inline bool Negation() const { return negation; }
+    inline VersionedVariable Lhs() const
+    {
+        return lhs;
+    }
+
+    inline void Rhs( const VersionedVariable &r )
+    {
+        rhs = r;
+    }
+
+    inline VersionedVariable Rhs() const
+    {
+        return rhs;
+    }
+
+    inline void Op( OperatorSMT o )
+    {
+        op = o;
+    }
+
+    inline OperatorSMT Op() const
+    {
+        return op;
+    }
+
+    inline void Negation( bool n )
+    {
+        negation = n;
+    }
+
+    inline bool Negation() const
+    {
+        return negation;
+    }
+
 private:
-	VersionedVariable lhs;
-	VersionedVariable rhs;
-	OperatorSMT op;
-	bool negation;
+    VersionedVariable lhs;
+    VersionedVariable rhs;
+    OperatorSMT op;
+    bool negation;
 };
 
 #endif

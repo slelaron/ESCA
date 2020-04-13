@@ -3,11 +3,8 @@
 
 #include <vector>
 #include <deque>
-#include <memory>
-#include <string>
 
 #include "TypesFSM.h"
-#include "../VersionedVariable.h"
 #include "../SMT/FormulaSMT.h"
 
 typedef std::vector<VersionedVariable> VarStorage;
@@ -33,18 +30,21 @@ public:
     FormulaStorage formulae;
     bool isEnd = false;
     bool isBranchLeaf = false; //Former leaf in which there is
-public:
+
     std::string PrintFormulae();
 
     std::string PrintFormulaeSat();
 
-    inline bool IsLeaf() const
-    { return (!isEnd) && outgoing.empty(); }
+    [[nodiscard]] inline bool IsLeaf() const
+    {
+        return (!isEnd) && outgoing.empty();
+    }
 };
 
 bool operator==( const StateFSM &lhs, const StateFSM &rhs );
 
 bool operator<( const StateFSM &lhs, const StateFSM &rhs );
+
 //typedef shared_ptr<StateFSM> StateFSMPtr;
 
 #endif

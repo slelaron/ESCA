@@ -8,12 +8,12 @@
 class VersionedVariable : public Variable
 {
 public:
-    VersionedVariable() = default; // TODO : make it delete
+    VersionedVariable() = delete;
 
     VersionedVariable( const VersionedVariable &vv ) = default;
 
-    VersionedVariable( const std::string &t, const std::string &n, const std::string &l, EMetaType mt, int ver )
-            : Variable(t, n, l, mt), version(ver)
+    VersionedVariable( const std::string &name, const std::string &location, EMetaType mt, int ver, const std::string &type="" )
+            : Variable(name, location, mt, type), version(ver)
     {
     }
 
