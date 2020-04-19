@@ -20,22 +20,22 @@ class DeleteStatement : public Statement
 public:
     DeleteStatement( const std::string &name, bool isArray );
 
-    void process( Target::ProcessCtx &ctx );
+    void process( ProcessCtx &ctx ) override;
 
 private:
     std::string name;
     bool isArray;
 };
 
-
+/// состовное состояние
 class CompoundStatement : public Statement
 {
 public:
     CompoundStatement() = default;
 
-    void addState( Target::Statement *st );
+    void addState( Statement *st );
 
-    void process( Target::ProcessCtx &ctx );
+    void process( ProcessCtx &ctx ) override;
 
 private:
     std::vector<Statement *> statements;
@@ -48,7 +48,7 @@ public:
     IfStatement( Target::Statement *thenSt, Target::Statement *elseSt, const std::string &condStr,
                  const std::string &elseStr );
 
-    void process( Target::ProcessCtx &ctx );
+    void process( Target::ProcessCtx &ctx ) override;
 
 private:
     Statement *thenSt = nullptr;
@@ -64,7 +64,7 @@ public:
     VarDeclFromFooStatement( const std::string &varName, const std::string &fooName,
                              const std::string &loc );
 
-    void process( Target::ProcessCtx &ctx );
+    void process( Target::ProcessCtx &ctx ) override;
 
 private:
     std::string varName;
@@ -140,4 +140,5 @@ public:
 private:
     std::string returnVarName;
 };
-}
+
+} // target

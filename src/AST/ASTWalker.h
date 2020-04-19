@@ -4,7 +4,6 @@
 
 #include <clang/Lex/HeaderSearchOptions.h>
 #include <clang/AST/Stmt.h>
-#include <clang/AST/ASTContext.h>
 
 
 class ESCAASTConsumer;
@@ -17,7 +16,7 @@ public:
 
     ~ASTWalker();
 
-    void WalkAST( const std::string &path );
+    bool WalkAST( const std::string &path );
 
     void DumpStmt( clang::Stmt *s );
 

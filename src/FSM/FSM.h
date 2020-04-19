@@ -100,7 +100,7 @@ public:
         return isAllocReturns;
     }
 
-#ifdef DEBUG
+#ifdef SAVE_XML
 
     void SaveToXML();
 

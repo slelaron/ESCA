@@ -3,7 +3,7 @@
 
 #include "StateFSM.h"
 
-std::string FormulaeToString( const std::deque<std::shared_ptr<FormulaSMT>> &formulae )
+std::string FormulaeToString( const FormulaStorage &formulae )
 {
     std::string res;
     for( auto &f : formulae )
@@ -13,7 +13,7 @@ std::string FormulaeToString( const std::deque<std::shared_ptr<FormulaSMT>> &for
     return res;
 }
 
-std::string FormulaeToStringSat( const std::deque<std::shared_ptr<FormulaSMT>> &formulae )
+std::string FormulaeToStringSat( const FormulaStorage &formulae )
 {
     return FormulaeToString(formulae) + "(check-sat)\n";
 }

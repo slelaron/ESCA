@@ -7,8 +7,6 @@
 
 #include "PathStorage.h"
 #include "../target/Context.h"
-#include "../SMT/Variable.h"
-#include "../SMT/VersionedVariable.h"
 
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
@@ -17,8 +15,6 @@ public:
     ESCAASTVisitor();
 
     bool VisitFunctionDecl( clang::FunctionDecl *f );
-
-public:
 
     inline void SetPath( const std::string &_path )
     {
@@ -52,6 +48,8 @@ private:
 private:
     Target::Context ctx;
     clang::SourceManager *currSM = nullptr;
+
+    std::map<std::string, std::string> staticFuncMapping;
 
     std::shared_ptr<PathStorage> path;
 

@@ -13,7 +13,6 @@
 #include "Output.h"
 
 
-std::map<std::string, std::string> staticFuncMapping;
 
 std::set<std::string> allocatedFunctions;
 

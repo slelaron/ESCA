@@ -13,9 +13,9 @@ typedef std::deque<std::shared_ptr<FormulaSMT> > FormulaStorage;
 typedef std::string ConditionEvent;
 
 //class TransitionFSM;
-std::string FormulaeToString( const std::deque<std::shared_ptr<FormulaSMT>> &formulae );
+std::string FormulaeToString( const FormulaStorage &formulae );
 
-std::string FormulaeToStringSat( const std::deque<std::shared_ptr<FormulaSMT>> &formulae );
+std::string FormulaeToStringSat( const FormulaStorage &formulae );
 
 class StateFSM
 {

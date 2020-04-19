@@ -40,7 +40,7 @@ Target::IfStatement::IfStatement( Target::Statement *thenSt, Target::Statement *
 void Target::IfStatement::process( Target::ProcessCtx &ctx )
 {
     // process then
-    // скорей всего в then находятся какие то простые действия, котораы нам не интересны
+    // скорей всего в then находятся какие то простые действия, которые нам не интересны
     // например присвоение констант или еще что то такое
     if( thenSt )
     {
@@ -76,7 +76,7 @@ void Target::VarDeclFromFooStatement::process( Target::ProcessCtx &ctx )
             VAR_POINTER
     };
     //variables[name] = ptrCnt;
-    auto cntIter = ctx.variables.insert(std::make_pair(varName, ptrCnt));
+    auto cntIter = ctx.variables.insert({varName, ptrCnt});
 
     if( allocatedFunctions.find(fooName) != allocatedFunctions.end())
     {

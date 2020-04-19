@@ -312,7 +312,6 @@ void FSM::SolveRet( bool isArray, const StateFSM &s )
 
         if( solverResult.find("unsat") != -1 ) //unsat
         {
-            std::cout << "~~~~OK~~~~" << std::endl;
             //No leak
         }
         else if( solverResult.find("sat") != -1 )
@@ -390,7 +389,7 @@ bool FSM::MatchEvents( FSMID stateID )
     return true;
 }
 
-#ifdef DEBUG
+#ifdef SAVE_XML
 
 namespace
 {

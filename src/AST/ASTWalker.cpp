@@ -1,10 +1,5 @@
-#include <clang/Basic/DiagnosticOptions.h>
-#include <clang/Basic/LangOptions.h>
-#include <clang/Basic/FileSystemOptions.h>
-#include <clang/Basic/FileManager.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/Basic/Builtins.h>
-#include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/CompilerInvocation.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
@@ -19,6 +14,7 @@
 
 #include <llvm/Support/Host.h>
 #include <llvm/IR/Function.h>
+#include <iostream>
 
 #include "ASTWalker.h"
 #include "ESCAASTConsumer.h"
@@ -38,21 +34,28 @@ void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
 {
     for( const auto &path : paths )
     {
-        // TODO: разобраться почему идет проверка и вывод варнингов о системных либах
-        //      (исправлено перемещением потока stdout в файл)
         headerSearchOptions->AddPath(path, clang::frontend::Angled, false, false);
     }
 }
 
-void ASTWalker::WalkAST( const std::string &path )
+bool ASTWalker::WalkAST( const std::string &path )
 {
     clang::DiagnosticOptions diagnosticOptions;
-    auto *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::outs(), &diagnosticOptions);
-    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
-    auto *pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
-                                                            &diagnosticOptions, pTextDiagnosticPrinter);
+    // TextDiagnosticPrinter анализирует файлы, чтобы не выводил весь анализ в stdout,
+    // создаем файл куда и выводим всю информацию
+    std::error_code ec;
+    llvm::raw_fd_ostream dbg_inf("diagnostic_info.txt", ec);
+    if( ec )
+    {
+        std::cerr << ec.message() << std::endl;
+        return false;
+    }
 
-    clang::LangOptions languageOptions;
+    auto pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(dbg_inf, &diagnosticOptions);
+
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
+    auto pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs, &diagnosticOptions, pTextDiagnosticPrinter);
+
     clang::FileSystemOptions fileSystemOptions = clang::FileSystemOptions();
     clang::FileManager fileManager(fileSystemOptions);
 
@@ -61,16 +64,15 @@ void ASTWalker::WalkAST( const std::string &path )
     clang::InputKind ik(clang::Language::CXX, clang::InputKind::Source, false);
     llvm::Triple triple;
     clang::PreprocessorOptions ppopts;
+    clang::LangOptions languageOptions;
+
     clang::CompilerInvocation::setLangDefaults(languageOptions, ik, triple, ppopts);
     languageOptions.ImplicitInt = 1;
 
 
     auto targetOptions = std::make_shared<clang::TargetOptions>();
     targetOptions->Triple = llvm::sys::getDefaultTargetTriple();
-    clang::TargetInfo *pTargetInfo =
-            clang::TargetInfo::CreateTargetInfo(
-                    *pDiagnosticsEngine,
-                    targetOptions);
+    clang::TargetInfo *pTargetInfo = clang::TargetInfo::CreateTargetInfo(*pDiagnosticsEngine, targetOptions);
 
     clang::HeaderSearch headerSearch(headerSearchOptions,
                                      sourceManager,
@@ -87,7 +89,8 @@ void ASTWalker::WalkAST( const std::string &path )
             languageOptions,
             sourceManager,
             headerSearch,
-            compInst);
+            compInst
+    );
 
     preprocessor.Initialize(*pTargetInfo);
 
@@ -105,11 +108,17 @@ void ASTWalker::WalkAST( const std::string &path )
             preprocessor,
             *pOpts,
             containerReader,
-            frontendOptions);
+            frontendOptions
+    );
 
 
     llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(path);
 //    clang::SourceLocation sourceLocation;
+    if( !pFile )
+    {
+        std::cerr << pFile.getError().message() << ", path: " << path << std::endl;
+        return false;
+    }
     auto mainID = sourceManager.getOrCreateFileID(pFile.get(), clang::SrcMgr::C_System);
     sourceManager.setMainFileID(mainID);
     const clang::TargetInfo &targetInfo = *pTargetInfo;
@@ -130,6 +139,7 @@ void ASTWalker::WalkAST( const std::string &path )
         clang::ParseAST(preprocessor, static_cast<clang::ASTConsumer *>(astConsumer.get()), *astContext);
         pTextDiagnosticPrinter->EndSourceFile();
     }
+    return true;
 }
 
 void ASTWalker::DumpStmt( clang::Stmt *s )
