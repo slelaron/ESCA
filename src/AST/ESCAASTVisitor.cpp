@@ -6,36 +6,30 @@
 #include <llvm/Support/raw_ostream.h>
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/ASTContext.h>
+#include <iostream>
 
 #include "ESCAASTVisitor.h"
 
-#include "PathStorage.h"
 #include "Output.h"
-
 
 
 std::set<std::string> allocatedFunctions;
 
-std::map<std::string, Target::Function*> allFunctions;
+std::map<std::string, Target::Function *> allFunctions;
 
 std::set<std::string> processedFunctions;
+
+
+bool ESCAASTVisitor::VisitFunctionDecl( clang::FunctionDecl *f )
+{
+    return ProcessFunction(f);
+}
 
 
 std::string ESCAASTVisitor::getLocation( const clang::Stmt *st )
 {
     auto loc = st->getBeginLoc();
     return loc.printToString(*currSM);
-}
-
-
-ESCAASTVisitor::ESCAASTVisitor() : path(new PathStorage)
-{
-}
-
-
-bool ESCAASTVisitor::VisitFunctionDecl( clang::FunctionDecl *f )
-{
-    return ProcessFunction(f);
 }
 
 bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
@@ -55,8 +49,7 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
     clang::SourceLocation::getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
     Cout << "\nlocation string: " << lstr << "\n";
 
-    PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
-    if( ps.Folder() != path->Folder())
+    if( IsInExcludedPath(lstr))
     {
         return true;
     }
@@ -84,6 +77,7 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 
         allFunctions[ funName ] = ctx.lastFoo;
 
+        /// MAIN FUNCTION
         ProcessStmt(body);
         // lazy
         //ProcessReturnNone();
@@ -537,7 +531,7 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     std::string typeS;
     llvm::raw_string_ostream lso(typeS);
     clang::LangOptions langOpts;
-    langOpts.CPlusPlus11 = true;
+    langOpts.CPlusPlus17 = true;
     PrintingPolicy pol(langOpts);
     cond->printPretty(lso, nullptr, pol);
     std::string condStr = "~if - " + lso.str();
@@ -555,4 +549,16 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     ctx.addIfStatement(thenSt, elseSt, condStr, elseStr);
 
     return true;
+}
+
+bool ESCAASTVisitor::IsInExcludedPath( const std::string &file )
+{
+    for( const auto &path: excludedPaths )
+    {
+        if( file.find(path) != std::string::npos )
+        {
+            return true;
+        }
+    }
+    return false;
 }

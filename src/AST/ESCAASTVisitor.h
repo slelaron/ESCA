@@ -5,20 +5,22 @@
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
 
-#include "PathStorage.h"
 #include "../target/Context.h"
 
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 {
 public:
-    ESCAASTVisitor();
+    ESCAASTVisitor() = default;
 
+    /// @brief основная функция, неявно вызывается при проходе по AST дереву
     bool VisitFunctionDecl( clang::FunctionDecl *f );
 
-    inline void SetPath( const std::string &_path )
+    /// @brief Метод устанавливает пути которые следиет исключить из анализа AST дерева
+    /// @param _paths - пути до директорий где хранятся библиотеки (#include<some_lib>)
+    inline void SetExcludedPaths( const std::vector<std::string> &_paths )
     {
-        path->SetPath(_path);
+        excludedPaths = _paths;
     }
 
 private:
@@ -26,6 +28,7 @@ private:
 
     void Reset();
 
+    /// MAIN FUNCTION
     bool ProcessFunction( clang::FunctionDecl *f );
 
     bool ProcessStmt( clang::Stmt *stmt, bool = true );
@@ -45,13 +48,20 @@ private:
     bool ProcessReturnNone(); //Pointers are not returned.
 
     bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
+
+    /// @brief метод проверяет находится ли файл в исключенных директориях
+    /// @param file - путь до файла который нужно проверить
+    /// @return true - если файл внутри директории, false иначе
+    bool IsInExcludedPath( const std::string &file );
+
 private:
     Target::Context ctx;
     clang::SourceManager *currSM = nullptr;
 
     std::map<std::string, std::string> staticFuncMapping;
 
-    std::shared_ptr<PathStorage> path;
+    ///@brief пути до системных библиотек и тех которые следует исключить из анализа
+    std::vector<std::string> excludedPaths;
 
     //std::map<std::string, std::vector<VersionedVariable> > variables;
     //std::map<std::string, int> variables;

@@ -32,6 +32,7 @@ ASTWalker::~ASTWalker()
 
 void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
 {
+    astConsumer->SetExcludedPaths(paths); // исключаем из анализа системные директории
     for( const auto &path : paths )
     {
         headerSearchOptions->AddPath(path, clang::frontend::Angled, false, false);
@@ -134,7 +135,6 @@ bool ASTWalker::WalkAST( const std::string &path )
     astContext->InitBuiltinTypes(targetInfo);
 //    astConsumer->Initialize(*astContext);
     {
-        astConsumer->SetPath(path);
         pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
         clang::ParseAST(preprocessor, static_cast<clang::ASTConsumer *>(astConsumer.get()), *astContext);
         pTextDiagnosticPrinter->EndSourceFile();

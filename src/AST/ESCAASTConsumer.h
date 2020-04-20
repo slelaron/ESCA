@@ -10,7 +10,7 @@
 class ESCAASTConsumer : public clang::ASTConsumer
 {
 public:
-
+    /// @brief Переопределяемая функция для прохода по AST дереву нашим AST visitor
     bool HandleTopLevelDecl( clang::DeclGroupRef DR ) override
     {
         for( auto it : DR )
@@ -24,9 +24,10 @@ public:
 
 public:
 
-    inline void SetPath( const std::string &path )
+    /// @brief Запоминаем пути для AST visitor которые следует проигнорировать
+    inline void SetExcludedPaths( const std::vector<std::string> &path )
     {
-        visitor.SetPath(path);
+        visitor.SetExcludedPaths(path);
     }
 
 private:
