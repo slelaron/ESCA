@@ -2,7 +2,7 @@
 #define EXEC_SOLVER
 
 
-#ifdef __linux__
+#ifdef __unix__
 constexpr const char *z3solverCmdline = "/usr/bin/z3 ";
 #endif
 #ifdef _WIN32

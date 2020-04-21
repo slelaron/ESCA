@@ -22,12 +22,15 @@ public:
         return true;
     }
 
-public:
-
     /// @brief Запоминаем пути для AST visitor которые следует проигнорировать
     inline void SetExcludedPaths( const std::vector<std::string> &path )
     {
         visitor.SetExcludedPaths(path);
+    }
+
+    Target::Context GetContext()
+    {
+        return visitor.getContext();
     }
 
 private:

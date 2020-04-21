@@ -1,5 +1,6 @@
 include_directories(../FSM ../SMT)
 
 add_library(target SHARED
-        Statement.cpp
+        Statements.cpp
+        Context.cpp
         )

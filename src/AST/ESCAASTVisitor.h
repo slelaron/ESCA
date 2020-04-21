@@ -23,15 +23,26 @@ public:
         excludedPaths = _paths;
     }
 
+    Target::Context getContext()
+    {
+        return ctx;
+    }
+
 private:
+    /// @brief Получение сторки с названием файла и номером строки в нем, где находится состояние
+    /// @param st - состояние
     std::string getLocation( const clang::Stmt *st );
 
+    /// @brief Сброс автомата состаяний и переменных текущей функции
     void Reset();
 
     /// MAIN FUNCTION
     bool ProcessFunction( clang::FunctionDecl *f );
 
-    bool ProcessStmt( clang::Stmt *stmt, bool = true );
+    /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
+    /// @param stmt - состояние которое нужно проверить
+    /// @param addToState - нужно ли сохранять в контекст
+    bool ProcessStmt( clang::Stmt *stmt, bool addToState = true );
 
     bool ProcessCompound( clang::CompoundStmt *body, bool );
 
@@ -55,7 +66,10 @@ private:
     bool IsInExcludedPath( const std::string &file );
 
 private:
+    /// @brief Весь контекст и состояния хранятся тут
     Target::Context ctx;
+
+    /// @brief Нужен для получения строки в текущей функции
     clang::SourceManager *currSM = nullptr;
 
     std::map<std::string, std::string> staticFuncMapping;

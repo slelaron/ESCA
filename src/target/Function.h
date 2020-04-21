@@ -1,12 +1,12 @@
-#include "Statement.h"
+#include "Statements.h"
 
 namespace Target
 {
 class Function;
 }
 
-extern std::set<std::string> allocatedFunctions;
 extern std::map<std::string, Target::Function *> allFunctions;
+
 extern std::set<std::string> processedFunctions;
 
 namespace Target
@@ -14,13 +14,21 @@ namespace Target
 class Function
 {
 public:
+    Function() = delete;
+
+    explicit Function( const std::string &name ) : name(name)
+    {
+    }
+
+    /// @brief состояние которое хранит все состояния функции
     CompoundStatement *statement = nullptr;
+
+    /// @brief имена функций которые вызываются внутри функции
     std::vector<std::string> callee;
 
-    std::string name;
     std::set<std::string> returnName;
-//        using FooPtr = std::shared_ptr<Function>;
 
+    /// @brief запуск анализа функции
     void process()
     {
         // already proccessed
@@ -34,7 +42,7 @@ public:
         {
             if( allFunctions.find(c) == allFunctions.end())
             {
-                // KABUM
+                // нет такой функции среди известных нам
                 continue;
             }
 
@@ -48,11 +56,12 @@ public:
         // process
         ProcessCtx ctx;
         ctx.fsm.FunctionName(name);
-        static int x = 123;
-        if( name == "SCR_ScreenShot_f_1" )
-        {
-            ++x;
-        }
+
+//        static int x = 123;
+//        if( name == "SCR_ScreenShot_f_1" )
+//        {
+//            ++x;
+//        }
 
         statement->process(ctx);
 
@@ -64,6 +73,9 @@ public:
 
         processedFunctions.insert(name);
     }
+
+private:
+    std::string name;
 
 };
 

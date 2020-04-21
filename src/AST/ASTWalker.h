@@ -4,9 +4,8 @@
 
 #include <clang/Lex/HeaderSearchOptions.h>
 #include <clang/AST/Stmt.h>
+#include "ESCAASTConsumer.h"
 
-
-class ESCAASTConsumer;
 
 
 class ASTWalker
@@ -23,6 +22,8 @@ public:
     /// @brief Добавляет файлы где искать include библиотеки используемые в проекте
     /// @param paths - список директорий, содержащих библиотеки
     void SetIncludeDirectories( const std::vector<std::string> &paths );
+
+    Target::Context GetContext();
 
 protected:
     std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;

@@ -17,6 +17,7 @@ std::string FormulaeToString( const FormulaStorage &formulae );
 
 std::string FormulaeToStringSat( const FormulaStorage &formulae );
 
+/// @brief одно из состояний автомата
 class StateFSM
 {
 public:
@@ -28,6 +29,7 @@ public:
     VarStorage allocArrays;
     VarStorage delPointers;
     VarStorage delArrays;
+
     FormulaStorage formulae;
     bool isEnd = false;
     bool isBranchLeaf = false; //Former leaf in which there is

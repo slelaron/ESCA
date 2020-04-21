@@ -310,11 +310,11 @@ void FSM::SolveRet( bool isArray, const StateFSM &s )
 
         auto solverResult = runSolver(fileName);
 
-        if( solverResult.find("unsat") != -1 ) //unsat
+        if( solverResult.find("unsat") != std::string::npos ) //unsat
         {
             //No leak
         }
-        else if( solverResult.find("sat") != -1 )
+        else if( solverResult.find("sat") != std::string::npos )
         {
             //Leak
             llvm::errs() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LEAK~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";

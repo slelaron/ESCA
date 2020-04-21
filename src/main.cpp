@@ -1,19 +1,43 @@
 #include <iostream>
 #include <string>
-
+#include <fstream>
 #include "AST/ASTWalker.h"
-#include "target/Function.h"
 
 
 void usage()
 {
-    std::cout << "USAGE: ESCA [-f|--files] <source0> [... <sourceN>]" << std::endl;
+    std::cout << "USAGE: ESCA [-f|--files] <source0> [... <sourceN>]" << std::endl
+              << "\t[-p|--path] <path>" << std::endl
+              << "\t[-c|--cmake] <cmake json file>" << std::endl;
 }
 
-void parseArgs( std::vector<std::string> &files, int argc, char **argv )
+void parseCmake( std::vector<std::string> &files, const std::string &json )
 {
-    if( argc < 2 || std::string(argv[ 1 ]) == "-h" || std::string(argv[ 1 ]) == "--help" )
+    std::ifstream js(json);
+    if( !js.is_open())
     {
+        std::cerr << "can't open file" << json << std::endl;
+        exit(1);
+    }
+    std::string line;
+    while( getline(js, line))
+    {
+        int s = line.find("\"file\"");
+        if( s != std::string::npos )
+        {
+            line = line.substr(s + 9, line.length() - s - 10);
+            files.push_back(line);
+        }
+    }
+}
+
+bool walkAlone = false;
+
+void parseArgs( std::vector<std::string> &files, std::string &path, int argc, char **argv )
+{
+    if( argc <= 2 || std::string(argv[ 1 ]) == "-h" || std::string(argv[ 1 ]) == "--help" )
+    {
+        std::cout << "not enough arguments" << std::endl;
         usage();
         exit(0);
     }
@@ -25,9 +49,14 @@ void parseArgs( std::vector<std::string> &files, int argc, char **argv )
             files.emplace_back(argv[ i ]);
         }
     }
-    else
+    else if( argv1 == "-p" || argv1 == "--path" )
     {
-        files.push_back(argv1);
+        path = argv[ 2 ];
+        //Todo : walk dir and detect files
+    }
+    else if( argv1 == "-c" || argv1 == "--cmake" )
+    {
+        parseCmake(files, argv[ 2 ]);
     }
 }
 
@@ -35,9 +64,11 @@ void parseArgs( std::vector<std::string> &files, int argc, char **argv )
 int main( int argc, char **argv )
 {
     std::vector<std::string> files;
-    parseArgs(files, argc, argv);
+    std::string path;
+    parseArgs(files, path, argc, argv);
     ASTWalker walker;
-#ifdef __linux__
+#ifdef __unix__
+// TODO: autodetect it or let user do it
     std::vector<std::string> paths = {
             "/usr/include/",
             "/usr/include/c++/9/",
@@ -51,17 +82,14 @@ int main( int argc, char **argv )
 
     for( const auto &file : files )
     {
-        std::cout << "Start walk for " << file << std::endl;
+        std::cout << "Start analyze for " << file << std::endl;
         if( !walker.WalkAST(file))
         {
-            std::cerr << "Failed to walk for file: " << file << std::endl;
+            std::cerr << "Failed to analyze for file: " << file << std::endl;
         }
     }
 
     std::cout << "---------------------------------------" << std::endl;
-
-    //    allocatedFunctions.clear();
-    //    allocatedFunctions.insert(std::string("new"));
 
     for( auto p : allFunctions )
     {

@@ -9,9 +9,25 @@ namespace Target
 class Statement
 {
 public:
+    /// @brief Запуск анализа соответствующего состояния
+    /// @param ctx - контекст запуска, хранит FSM
     virtual void process( ProcessCtx &ctx ) = 0;
 
     virtual ~Statement() = default;
+};
+
+/// @brief Состовное состояние, содержит несколько состояний
+class CompoundStatement : public Statement
+{
+public:
+    CompoundStatement() = default;
+
+    void addState( Statement *st );
+
+    void process( ProcessCtx &ctx ) override;
+
+private:
+    std::vector<Statement *> statements;
 };
 
 
@@ -25,20 +41,6 @@ public:
 private:
     std::string name;
     bool isArray;
-};
-
-/// состовное состояние
-class CompoundStatement : public Statement
-{
-public:
-    CompoundStatement() = default;
-
-    void addState( Statement *st );
-
-    void process( ProcessCtx &ctx ) override;
-
-private:
-    std::vector<Statement *> statements;
 };
 
 
@@ -133,7 +135,7 @@ private:
 class ReturnStatement : public Statement
 {
 public:
-    ReturnStatement( const std::string &returnVarName );
+    explicit ReturnStatement( const std::string &returnVarName );
 
     void process( ProcessCtx &ctx ) override;
 

@@ -3,25 +3,17 @@
 #include <BinarySMT.h>
 #include "Function.h"
 
-Target::DeleteStatement::DeleteStatement( const std::string &name, bool isArray )
-        : name(name), isArray(isArray)
+extern std::set<std::string> allocatedFunctions;
+
+namespace Target
 {
-}
 
-void Target::DeleteStatement::process( Target::ProcessCtx &ctx )
-{
-    auto cntIter = ctx.variables.find(name);
-    VersionedVariable vv(name, "unused", cntIter->second.meta, cntIter->second.count);
-
-    ctx.fsm.AddDeleteState(vv, isArray);
-}
-
-void Target::CompoundStatement::addState( Target::Statement *st )
+void CompoundStatement::addState( Statement *st )
 {
     statements.push_back(st);
 }
 
-void Target::CompoundStatement::process( Target::ProcessCtx &ctx )
+void CompoundStatement::process( ProcessCtx &ctx )
 {
     for( auto st : statements )
     {
@@ -29,7 +21,20 @@ void Target::CompoundStatement::process( Target::ProcessCtx &ctx )
     }
 }
 
-Target::IfStatement::IfStatement( Target::Statement *thenSt, Target::Statement *elseSt, const std::string &condStr,
+DeleteStatement::DeleteStatement( const std::string &name, bool isArray )
+        : name(name), isArray(isArray)
+{
+}
+
+void DeleteStatement::process( ProcessCtx &ctx )
+{
+    auto cntIter = ctx.variables.find(name);
+    VersionedVariable vv(name, "unused", cntIter->second.meta, cntIter->second.count);
+
+    ctx.fsm.AddDeleteState(vv, isArray);
+}
+
+IfStatement::IfStatement( Statement *thenSt, Statement *elseSt, const std::string &condStr,
                                   const std::string &elseStr )
         : thenSt(thenSt), elseSt(elseSt), condStr(condStr), elseStr(elseStr)
 {
@@ -37,39 +42,39 @@ Target::IfStatement::IfStatement( Target::Statement *thenSt, Target::Statement *
     a++;
 }
 
-void Target::IfStatement::process( Target::ProcessCtx &ctx )
+void IfStatement::process( ProcessCtx &ctx )
 {
     // process then
     // скорей всего в then находятся какие то простые действия, которые нам не интересны
     // например присвоение констант или еще что то такое
     if( thenSt )
     {
-        ctx.fsm.PushCondition(condStr);
+//        ctx.fsm.PushCondition(condStr);
         StateFSM s;
         ctx.fsm.AddStateToLeaves(s, ctx.fairPred, condStr, false);
         thenSt->process(ctx);
-        ctx.fsm.PopCondition();
+//        ctx.fsm.PopCondition();
     }
 
     // process else
     // тоже самое, как для then, но есть еще случай, когда else вообще отсутствует
     if( elseSt )
     {
-        ctx.fsm.PushCondition(elseStr);
+//        ctx.fsm.PushCondition(elseStr);
         StateFSM s;
         ctx.fsm.AddStateToLeaves(s, ctx.branchPred, elseStr, true);
         elseSt->process(ctx);
-        ctx.fsm.PopCondition();
+//        ctx.fsm.PopCondition();
     }
 }
 
-Target::VarDeclFromFooStatement::VarDeclFromFooStatement( const std::string &varName, const std::string &fooName,
+VarDeclFromFooStatement::VarDeclFromFooStatement( const std::string &varName, const std::string &fooName,
                                                           const std::string &loc )
         : varName(varName), fooName(fooName), loc(loc)
 {
 }
 
-void Target::VarDeclFromFooStatement::process( Target::ProcessCtx &ctx )
+void VarDeclFromFooStatement::process( ProcessCtx &ctx )
 {
     PtrCounter ptrCnt = {
             0,
@@ -97,12 +102,12 @@ void Target::VarDeclFromFooStatement::process( Target::ProcessCtx &ctx )
     }
 }
 
-Target::VarDeclNewStatement::VarDeclNewStatement( const std::string &varName, bool isArray, const std::string &loc )
+VarDeclNewStatement::VarDeclNewStatement( const std::string &varName, bool isArray, const std::string &loc )
         : varName(varName), isArray(isArray), loc(loc)
 {
 }
 
-void Target::VarDeclNewStatement::process( Target::ProcessCtx &ctx )
+void VarDeclNewStatement::process( ProcessCtx &ctx )
 {
     PtrCounter ptrCnt = {
             0,
@@ -121,7 +126,8 @@ void Target::VarDeclNewStatement::process( Target::ProcessCtx &ctx )
         vv.MetaType(VAR_ARRAY_POINTER);
         cntIter.first->second.meta = VAR_ARRAY_POINTER;
         state.allocArrays.push_back(vv);
-    } else
+    }
+    else
     {
         state.allocPointers.push_back(vv);
     }
@@ -133,13 +139,13 @@ void Target::VarDeclNewStatement::process( Target::ProcessCtx &ctx )
     ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
 }
 
-Target::VarAssigmentFromFooStatement::VarAssigmentFromFooStatement( const std::string &varName,
+VarAssigmentFromFooStatement::VarAssigmentFromFooStatement( const std::string &varName,
                                                                     const std::string &fooName, const std::string &loc )
         : varName(varName), fooName(fooName), loc(loc)
 {
 }
 
-void Target::VarAssigmentFromFooStatement::process( Target::ProcessCtx &ctx )
+void VarAssigmentFromFooStatement::process( ProcessCtx &ctx )
 {
     PtrCounter &lhsCnt = ctx.variables[ varName ];
     int lhsVer = ++(lhsCnt.count);
@@ -162,14 +168,14 @@ void Target::VarAssigmentFromFooStatement::process( Target::ProcessCtx &ctx )
     }
 }
 
-Target::VarAssigmentFromPointerStatement::VarAssigmentFromPointerStatement( const std::string &varName,
+VarAssigmentFromPointerStatement::VarAssigmentFromPointerStatement( const std::string &varName,
                                                                             const std::string &rhsName,
                                                                             const std::string &loc )
         : varName(varName), rhsName(rhsName), loc(loc)
 {
 }
 
-void Target::VarAssigmentFromPointerStatement::process( Target::ProcessCtx &ctx )
+void VarAssigmentFromPointerStatement::process( ProcessCtx &ctx )
 {
     PtrCounter &lhsCnt = ctx.variables[ varName ];
     int lhsVer = ++(lhsCnt.count);
@@ -197,13 +203,13 @@ void Target::VarAssigmentFromPointerStatement::process( Target::ProcessCtx &ctx 
     ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
 }
 
-Target::VarAssigmentNewStatement::VarAssigmentNewStatement( const std::string &varName, bool isArray,
+VarAssigmentNewStatement::VarAssigmentNewStatement( const std::string &varName, bool isArray,
                                                             const std::string &loc )
         : varName(varName), isArray(isArray), loc(loc)
 {
 }
 
-void Target::VarAssigmentNewStatement::process( Target::ProcessCtx &ctx )
+void VarAssigmentNewStatement::process( ProcessCtx &ctx )
 {
     PtrCounter &lhsCnt = ctx.variables[ varName ];
     int lhsVer = ++(lhsCnt.count);
@@ -215,7 +221,8 @@ void Target::VarAssigmentNewStatement::process( Target::ProcessCtx &ctx )
         vv.MetaType(VAR_ARRAY_POINTER);
         state.allocArrays.push_back(vv);
         lhsCnt.meta = VAR_ARRAY_POINTER;
-    } else
+    }
+    else
     {
         state.allocPointers.push_back(vv);
         lhsCnt.meta = VAR_POINTER;
@@ -229,14 +236,14 @@ void Target::VarAssigmentNewStatement::process( Target::ProcessCtx &ctx )
     ctx.fsm.AddStateToLeaves(state, ctx.fairPred);
 }
 
-Target::ReturnStatement::ReturnStatement( const std::string &returnVarName )
+ReturnStatement::ReturnStatement( const std::string &returnVarName )
         : returnVarName(returnVarName)
 {
     static int a = 123;
     a++;
 }
 
-void Target::ReturnStatement::process( Target::ProcessCtx &ctx )
+void ReturnStatement::process( ProcessCtx &ctx )
 {
     if( !returnVarName.empty())
     {
@@ -254,4 +261,5 @@ void Target::ReturnStatement::process( Target::ProcessCtx &ctx )
     }
 
     ctx.fsm.ClearReturnVarName();
+}
 }

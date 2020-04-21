@@ -1,8 +1,8 @@
+/// unused file
 #include "Function.h"
 
 namespace Target
 {
-// TODO: выяснить зачем этот класс
 class Module
 {
 public:
@@ -15,7 +15,6 @@ public:
 
 private:
     std::vector<Function *> extFunctions;
-    // TODO:
     std::vector <Function> staticFunctions;
 };
 }

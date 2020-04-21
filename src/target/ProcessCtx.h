@@ -4,9 +4,11 @@ namespace Target
 {
 struct ProcessCtx
 {
-    std::map <std::string, PtrCounter> variables;
+    std::map<std::string, PtrCounter> variables;
 
-    std::vector <VersionedVariable> allocated;
+    /// @brief вектор аллоцированных переменных
+    std::vector<VersionedVariable> allocated;
+
     FSM fsm;
 
     FairLeafPredicate fairPred;

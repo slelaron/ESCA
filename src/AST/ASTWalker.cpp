@@ -17,10 +17,9 @@
 #include <iostream>
 
 #include "ASTWalker.h"
-#include "ESCAASTConsumer.h"
 
 ASTWalker::ASTWalker()
-        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer)
+        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer())
 {
 }
 
@@ -146,4 +145,9 @@ void ASTWalker::DumpStmt( clang::Stmt *s )
 {
     s->dump(llvm::errs(), astContext->getSourceManager());
     s->dump();
+}
+
+Target::Context ASTWalker::GetContext()
+{
+    return astConsumer->GetContext();
 }

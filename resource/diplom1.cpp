@@ -3,12 +3,11 @@
 #include <filesystem>
 #include <vector>
 
-#define newI new int;
 
 
 void foo1( int &x, int y )
 {
-    int *a = newI;
+    int *a = new int(2);
     *a = x + y;
     int *b = new int(*a);
     x = *b;
@@ -141,9 +140,9 @@ void foo8()
         delete[] dd[ 1 ];
         delete[] a;
     }
-    catch( std::exception &e )
+    catch( const std::exception &e )
     {
-        throw e;
+        throw;
     }
 }
 

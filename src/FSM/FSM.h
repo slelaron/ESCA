@@ -19,6 +19,7 @@ class FSM
 public:
     FSM();
 
+    /// @brief Сброс состояний автомата до одного стартового
     void Reset();
 
     std::string FunctionName() const
@@ -95,6 +96,8 @@ public:
         isAllocReturns = false;
     }
 
+    /// @brief Возвращает ли функция указатель на выделенную память
+    /// @return true - возвращает, иначе - false
     bool IsAllocReturns()
     {
         return isAllocReturns;
@@ -110,6 +113,8 @@ public:
 
 private:
     std::set<std::string> returnVarName;
+
+    /// @brief флаг того что функция возвращает указатель на выделенную память
     bool isAllocReturns = false;
 
 //internal functions
@@ -126,9 +131,13 @@ private:
 
 //member variables
     std::string functionName;
+
+    /// @brief Все состояния автомата
     StatesStorage states;
+
     TransitionsStorage transitions;
     int iSat;
+
     ConditionStorage events;
 };
 
