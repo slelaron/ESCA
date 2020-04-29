@@ -25,6 +25,8 @@ public:
 
     Target::Context GetContext();
 
+    void RunAnalyzer();
+
 protected:
     std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;
     std::unique_ptr<clang::ASTContext> astContext;

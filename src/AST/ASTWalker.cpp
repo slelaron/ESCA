@@ -40,6 +40,8 @@ void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
 
 bool ASTWalker::WalkAST( const std::string &path )
 {
+    astConsumer->SetAnaliseFile(path);
+
     clang::DiagnosticOptions diagnosticOptions;
     // TextDiagnosticPrinter анализирует файлы, чтобы не выводил весь анализ в stdout,
     // создаем файл куда и выводим всю информацию
@@ -150,4 +152,12 @@ void ASTWalker::DumpStmt( clang::Stmt *s )
 Target::Context ASTWalker::GetContext()
 {
     return astConsumer->GetContext();
+}
+
+void ASTWalker::RunAnalyzer()
+{
+    for( auto p : allFunctions )
+    {
+        p.second->process();
+    }
 }

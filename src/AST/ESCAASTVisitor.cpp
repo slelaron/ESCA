@@ -49,10 +49,18 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
     clang::SourceLocation::getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
     Cout << "\nlocation string: " << lstr << "\n";
 
-    if( IsInExcludedPath(lstr))
+    if( needFast && lstr.find(analiseFile) == std::string::npos )
     {
         return true;
     }
+
+    if( !needFast && IsInExcludedPath(lstr))
+    {
+        return true;
+    }
+
+//    std::cout << lstr << std::endl;
+//    std::cout << "Visiting function " << funName << " id: " << f->getBuiltinID() << "\n";
 
     f->print(llvm::nulls());
 
@@ -168,7 +176,7 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
     }
     else if( auto tr = dyn_cast<CXXTryStmt>(stmt))
     {
-        std::cout << "try expr" << std::endl;
+//        std::cout << "try expr" << std::endl;
 //        tr->dump();
         if( auto trBlock = dyn_cast<CompoundStmt>(tr->getTryBlock()))
         {
@@ -256,6 +264,7 @@ bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToState
 
     for( auto iter = body->body_begin(); iter != body->body_end(); ++iter )
     {
+//        (*iter)->dump();
         ProcessStmt(*iter);
     }
 

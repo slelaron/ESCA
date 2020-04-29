@@ -1,40 +1,52 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <ctime>
+
 #include "AST/ASTWalker.h"
 
 
 void usage()
 {
-    std::cout << "USAGE: ESCA [-f|--files] <source0> [... <sourceN>]" << std::endl
-              << "\t[-p|--path] <path>" << std::endl
+    std::cout << "USAGE: ESCA [Options] <source> " << std::endl
+              << "\tOptions:\n\t[-f|--files] <text file with exec files>" << std::endl
               << "\t[-c|--cmake] <cmake json file>" << std::endl;
 }
 
-void parseCmake( std::vector<std::string> &files, const std::string &json )
+void parseFile( std::vector<std::string> &files, const std::string &file, bool isCmake )
 {
-    std::ifstream js(json);
-    if( !js.is_open())
+    std::ifstream fs(file);
+    if( !fs.is_open())
     {
-        std::cerr << "can't open file" << json << std::endl;
+        std::cerr << "can't open file: " << file << std::endl;
         exit(1);
     }
     std::string line;
-    while( getline(js, line))
+    while( getline(fs, line))
     {
-        int s = line.find("\"file\"");
-        if( s != std::string::npos )
+        if( isCmake )
         {
-            line = line.substr(s + 9, line.length() - s - 10);
+            int s = line.find("\"file\"");
+            if( s != std::string::npos )
+            {
+                line = line.substr(s + 9, line.length() - s - 10);
+                files.push_back(line);
+            }
+        }
+        else
+        {
             files.push_back(line);
         }
     }
 }
 
-bool walkAlone = false;
-
 void parseArgs( std::vector<std::string> &files, std::string &path, int argc, char **argv )
 {
+    if( argc == 2 && argv[ 1 ][ 0 ] != '-' )
+    {
+        files.emplace_back(argv[ 1 ]);
+        return;
+    }
     if( argc <= 2 || std::string(argv[ 1 ]) == "-h" || std::string(argv[ 1 ]) == "--help" )
     {
         std::cout << "not enough arguments" << std::endl;
@@ -44,19 +56,16 @@ void parseArgs( std::vector<std::string> &files, std::string &path, int argc, ch
     auto argv1 = std::string(argv[ 1 ]);
     if( argv1 == "--files" || argv1 == "-f" )
     {
-        for( int i = 2; i < argc; ++i )
-        {
-            files.emplace_back(argv[ i ]);
-        }
-    }
-    else if( argv1 == "-p" || argv1 == "--path" )
-    {
-        path = argv[ 2 ];
-        //Todo : walk dir and detect files
+        parseFile(files, argv[ 2 ], false);
     }
     else if( argv1 == "-c" || argv1 == "--cmake" )
     {
-        parseCmake(files, argv[ 2 ]);
+        parseFile(files, argv[ 2 ], true);
+    }
+    else
+    {
+        std::cerr << "undefined args" << std::endl;
+        exit(1);
     }
 }
 
@@ -91,10 +100,11 @@ int main( int argc, char **argv )
 
     std::cout << "---------------------------------------" << std::endl;
 
-    for( auto p : allFunctions )
-    {
-        p.second->process();
-    }
+    walker.RunAnalyzer();
+
+//    unsigned int end_time = clock();
+//    unsigned int search_time = end_time - start_time;
+    std::cout << "Working time:" << clock() / CLOCKS_PER_SEC << "sec" << std::endl;
 
     return 0;
 }

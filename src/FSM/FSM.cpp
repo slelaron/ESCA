@@ -342,7 +342,7 @@ void FSM::CreateNewRetNoneState( StateFSM &leaf )
     MoveVector(leaf.delArrays, s.delArrays);
     MoveVector(leaf.delPointers, s.delPointers);
 
-    //Note:This may be parallelized
+    //TODO: This may be parallelized
     SolveRet(true, s);
     SolveRet(false, s);
 

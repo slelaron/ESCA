@@ -23,6 +23,12 @@ public:
         excludedPaths = _paths;
     }
 
+    inline void SetAnaliseFile( const std::string &file, bool fast = true )
+    {
+        needFast = fast;
+        analiseFile = file;
+    }
+
     Target::Context getContext()
     {
         return ctx;
@@ -66,7 +72,7 @@ private:
     bool IsInExcludedPath( const std::string &file );
 
 private:
-    /// @brief Весь контекст и состояния хранятся тут
+    /// @brief Хранит весь контекст и состояния
     Target::Context ctx;
 
     /// @brief Нужен для получения строки в текущей функции
@@ -82,7 +88,8 @@ private:
 
     // ������ �������
     std::map<std::string, PtrCounter> variables;
-
+    std::string analiseFile;
+    bool needFast = true;
     std::vector<VersionedVariable> allocated;
     FSM fsm;
 

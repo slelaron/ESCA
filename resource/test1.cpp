@@ -4,7 +4,6 @@
 #include <vector>
 
 
-
 void foo1( int &x, int y )
 {
     int *a = new int(2);
@@ -16,7 +15,7 @@ void foo1( int &x, int y )
 
 void foo2()
 {
-// PVS не нашла +
+// PVS не нашла
     int *x = new int;
     int *y = x;
 }
@@ -34,30 +33,32 @@ FILE *openFile()
     return fopen(path, "r");
 }
 
-int *creatVal()
+int *create1()
 {
-    auto *p = new int(42);
+    int *p = new int[42];
     return p;
 }
 
-int *create( int x1 )
+int checkCreate()
 {
-// clang static analyzer не нашел
-    int *v1 = creatVal();
-    int x2 = *v1;
+    int *p = create1();
+    return *(p + 1);
+}
+
+int *create2()
+{
     int *v2 = new int(111);
-    *v1 = *v2;
-    std::cout << x1 << " " << x2 << std::endl;
-    std::cout << v1 << " " << v2 << std::endl;
     return v2;
 }
 
 int getValue( int x )
 {
 // никто из аналогов не нашел
-    int *a = create(x);
+    int *a = create2();
     if( *a > 10 )
+    {
         *a = 10;
+    }
     return *a;
 }
 
@@ -84,6 +85,7 @@ void foo5( int a )
     {
         b = new int(123);
     }
+
     if( a == 1 )
     {
         delete b;
@@ -129,15 +131,16 @@ std::vector<char *> dd;
 
 void foo8()
 {
-    dd.resize(10);
-    dd[ 1 ] = new char[10];
+    int x = rand();
     auto a = new char[10];
-    dd[1][0] = a[1];
     try
-    { // никто не нашел
-        if( !dd.empty())
-            throw std::logic_error("e");
-        delete[] dd[ 1 ];
+    {
+        char ch = a[9];
+        if( x > 5 )
+        {
+            throw std::logic_error(ch);
+        }
+        // никто не нашел
         delete[] a;
     }
     catch( const std::exception &e )

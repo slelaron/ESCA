@@ -28,6 +28,11 @@ public:
         visitor.SetExcludedPaths(path);
     }
 
+    inline void SetAnaliseFile( const std::string &file )
+    {
+        visitor.SetAnaliseFile(file);
+    }
+
     Target::Context GetContext()
     {
         return visitor.getContext();

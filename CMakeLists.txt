@@ -25,8 +25,5 @@ include_directories(${CLANG_INCLUDE_DIRS})
 #add_definitions(${CLANG_DEFINITIONS})
 
 add_subdirectory(src)
+add_subdirectory(tests)
 
-
-
-add_executable(test resource/1.cpp resource/diplom1.cpp)
-add_executable(test_me test.cpp)
