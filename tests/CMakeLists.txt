@@ -1,13 +1,8 @@
+include_directories(../src)
 
-add_subdirectory(AST)
-add_subdirectory(target)
-add_subdirectory(SMT)
-add_subdirectory(FSM)
+add_executable(test run_tests.cpp)
 
-add_executable(ESCA main.cpp)
-
-
-target_link_libraries(ESCA
+target_link_libraries(test
         LLVM
         ast
         target

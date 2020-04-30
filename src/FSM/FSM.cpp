@@ -1,9 +1,10 @@
-#include <algorithm>
-#include <functional>
 #include <stdexcept>
-#include <sstream>
 #include <memory>
 #include <fstream>
+
+#ifdef _WIN32
+#include <filesystem>
+#endif
 
 #include <llvm/Support/raw_ostream.h>
 #include <iostream>
@@ -11,12 +12,19 @@
 #include "FSM.h"
 #include "../SMT/BinarySMT.h"
 #include "../utils/ExecSolver.h"
-#include "../utils/DefectStorage.h"
+//#include "../utils/DefectStorage.h"
 #include "../utils/Output.h"
 
 std::string PrintSMT( int iSat, const FormulaStorage &f )
 {
     std::stringstream ss;
+#ifdef __linux__
+    ss << "/tmp/";
+#endif
+#ifdef _WIN32
+    auto tmp_path =  std::filesystem::temp_directory_path();
+    ss << tmp_path.c_str() << "\\";
+#endif
     ss << "form" << iSat << ".sat";
     std::ofstream outf(ss.str());
     outf << FormulaeToStringSat(f);
@@ -24,8 +32,7 @@ std::string PrintSMT( int iSat, const FormulaStorage &f )
     return ss.str();
 }
 
-FSM::FSM()
-        : iSat(0)
+FSM::FSM() : iSat(0)
 {
     CreateStart();
 }
@@ -39,7 +46,9 @@ void FSM::CreateStart()
 
 void FSM::Reset()
 {
+#ifdef SAVEXML
     SaveToXML();
+#endif
     StatesStorage().swap(states);
     TransitionsStorage().swap(transitions);
     events.clear();
@@ -80,7 +89,7 @@ bool MoveVector( std::vector<T> &source, std::vector<T> &dst )
 
 int FSM::StateToLeaf( int leafId, const StateFSM &newState )
 {
-    return StateToLeaf(leafId, newState, TransitionFSM::EPSILON);
+    return StateToLeaf(leafId, newState, EPSILON);
 }
 
 int FSM::StateToLeaf( int leafId, const StateFSM &newState, const std::string &pred )
@@ -114,7 +123,7 @@ int FSM::StateToLeaf( int leafId, const StateFSM &newState, const std::string &p
 
 void FSM::AddStateToLeaves( const StateFSM &s, LeafPredicate &pred )
 {
-    AddStateToLeaves(s, pred, TransitionFSM::EPSILON, true);
+    AddStateToLeaves(s, pred, EPSILON, true);
 }
 
 //TODO: Refactor this function!
@@ -301,12 +310,11 @@ void FSM::SolveRet( bool isArray, const StateFSM &s )
 
         auto solverResult = runSolver(fileName);
 
-        if( solverResult.find("unsat") != -1 ) //unsat
+        if( solverResult.find("unsat") != std::string::npos ) //unsat
         {
-            std::cout << "~~~~OK~~~~" << std::endl;
             //No leak
         }
-        else if( solverResult.find("sat") != -1 )
+        else if( solverResult.find("sat") != std::string::npos )
         {
             //Leak
             llvm::errs() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LEAK~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -334,7 +342,7 @@ void FSM::CreateNewRetNoneState( StateFSM &leaf )
     MoveVector(leaf.delArrays, s.delArrays);
     MoveVector(leaf.delPointers, s.delPointers);
 
-    //Note:This may be parallelized
+    //TODO: This may be parallelized
     SolveRet(true, s);
     SolveRet(false, s);
 
@@ -367,7 +375,7 @@ bool FSM::MatchEvents( FSMID stateID )
         auto parent = tr.start;
         if( !localEvents.empty())
         {
-            if( tr.evt != TransitionFSM::EPSILON )
+            if( tr.evt != EPSILON )
             {
                 if( tr.evt != localEvents.back())
                 {
@@ -381,7 +389,36 @@ bool FSM::MatchEvents( FSMID stateID )
     return true;
 }
 
-#ifdef DEBUG
+#ifdef SAVE_XML
+
+namespace
+{
+int indent;
+
+std::string DoIndent()
+{
+    std::string res = "";
+    for( int i = 0; i < indent; ++i )
+    {
+        res.push_back('\t');
+    }
+    return res;
+}
+
+std::string CnvStateId( FSMID id )
+{
+    std::stringstream res;
+    res << (id * 2);
+    return res.str();
+}
+
+std::string CnvTransitionId( FSMID id )
+{
+    std::stringstream res;
+    res << (id * 2 + 1);
+    return res.str();
+}
+}
 
 void FSM::SaveToXML()
 {
@@ -392,36 +429,6 @@ void FSM::SaveToXML()
     }
     path += ".xstd";
     SaveToXML(path);
-}
-
-#endif
-namespace
-{
-    int indent;
-
-    std::string DoIndent()
-    {
-        std::string res = "";
-        for( int i = 0; i < indent; ++i )
-        {
-            res.push_back('\t');
-        }
-        return res;
-    }
-
-    std::string CnvStateId( FSMID id )
-    {
-        std::stringstream res;
-        res << (id * 2);
-        return res.str();
-    }
-
-    std::string CnvTransitionId( FSMID id )
-    {
-        std::stringstream res;
-        res << (id * 2 + 1);
-        return res.str();
-    }
 }
 
 void FSM::SaveToXML( const std::string &path )
@@ -443,9 +450,9 @@ void FSM::SaveToXML( const std::string &path )
     outf << DoIndent() << "<Statemachine>" << std::endl;
 
     ++indent;
-    for( auto iter = events.begin(); iter != events.end(); ++iter )
+    for( auto &event : events )
     {
-        outf << DoIndent() << "<event name=\"" << *iter << "\" comment=\"\"/>" << std::endl;
+        outf << DoIndent() << "<event name=\"" << event << R"(" comment=""/>)" << std::endl;
     }
     outf << DoIndent() << "<autoreject>False</autoreject>" << std::endl;
     --indent;
@@ -483,9 +490,9 @@ void FSM::SaveToXML( const std::string &path )
             outf << DoIndent() << "<incoming id=\"" << CnvTransitionId(income) << "\"/>" << std::endl;
         }
 
-        for( auto outg = state.outgoing.begin(); outg != state.outgoing.end(); ++outg )
+        for( int &outg : state.outgoing )
         {
-            outf << DoIndent() << "<outgoing id=\"" << CnvTransitionId(*outg) << "\"/>" << std::endl;
+            outf << DoIndent() << "<outgoing id=\"" << CnvTransitionId(outg) << "\"/>" << std::endl;
         }
 
         --indent;
@@ -513,3 +520,5 @@ void FSM::SaveToXML( const std::string &path )
 
     outf.close();
 }
+
+#endif

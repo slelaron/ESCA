@@ -1,20 +1,16 @@
 #ifndef ESCAASTConsumer_h
 #define ESCAASTConsumer_h
 
-#include <string>
-
 #include <clang/AST/ASTConsumer.h>
 #include <clang/AST/DeclGroup.h>
 
 #include "ESCAASTVisitor.h"
 
-class ASTWalker;
 
 class ESCAASTConsumer : public clang::ASTConsumer
 {
 public:
-    ESCAASTConsumer() = default;
-
+    /// @brief Переопределяемая функция для прохода по AST дереву нашим AST visitor
     bool HandleTopLevelDecl( clang::DeclGroupRef DR ) override
     {
         for( auto it : DR )
@@ -26,15 +22,20 @@ public:
         return true;
     }
 
-public:
-    inline void SetWalker( ASTWalker *walker )
+    /// @brief Запоминаем пути для AST visitor которые следует проигнорировать
+    inline void SetExcludedPaths( const std::vector<std::string> &path )
     {
-        visitor.SetWalker(walker);
+        visitor.SetExcludedPaths(path);
     }
 
-    inline void SetPath( const std::string &path )
+    inline void SetAnaliseFile( const std::string &file )
     {
-        visitor.SetPath(path);
+        visitor.SetAnaliseFile(file);
+    }
+
+    Target::Context GetContext()
+    {
+        return visitor.getContext();
     }
 
 private:

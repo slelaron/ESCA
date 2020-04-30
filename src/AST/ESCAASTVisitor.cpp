@@ -1,50 +1,35 @@
 #include <string>
-//#include <memory>
 #include <map>
+#include <vector>
+#include <set>
 
 #include <llvm/Support/raw_ostream.h>
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/ASTContext.h>
+#include <iostream>
 
 #include "ESCAASTVisitor.h"
-#include "ASTWalker.h"
 
-#include "../Variable.h"
-
-#include "PathStorage.h"
-#include "../utils/Output.h"
-
-#include "../file.h"
+#include "Output.h"
 
 
-std::map<std::string, std::string> staticFuncMapping;
-
-
-std::set<std::string> allocatedFunctions;
-
+/// @brief все фукнции которые будут проанализированы
 std::map<std::string, Target::Function *> allFunctions;
 
-Target::Context ctx;
-
-
-clang::SourceManager *currSM = nullptr;
-
-
-std::string getLocation( const clang::Stmt *st )
-{
-    auto loc = st->getBeginLoc();
-    return loc.printToString(*currSM);
-}
-
-
-ESCAASTVisitor::ESCAASTVisitor() : walker(nullptr), path(new PathStorage)
-{
-}
+/// @brief множество проанализированных функций
+std::set<std::string> processedFunctions;
 
 
 bool ESCAASTVisitor::VisitFunctionDecl( clang::FunctionDecl *f )
 {
     return ProcessFunction(f);
+}
+
+
+std::string ESCAASTVisitor::getLocation( const clang::Stmt *st )
+{
+    auto loc = st->getBeginLoc();
+    return loc.printToString(*currSM);
 }
 
 bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
@@ -61,14 +46,21 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
     loc.print(llvm::nulls(), sm);
     auto lstr = loc.printToString(sm);
     Cout << "\ngetFromPtrEncoding dump:\n";
-    loc.getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
+    clang::SourceLocation::getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
     Cout << "\nlocation string: " << lstr << "\n";
 
-    PathStorage ps(lstr.substr(0, lstr.substr(4).find_first_of(":") + 4));
-    if( ps.Folder() != path->Folder())
+    if( needFast && lstr.find(analiseFile) == std::string::npos )
     {
         return true;
     }
+
+    if( !needFast && IsInExcludedPath(lstr))
+    {
+        return true;
+    }
+
+//    std::cout << lstr << std::endl;
+//    std::cout << "Visiting function " << funName << " id: " << f->getBuiltinID() << "\n";
 
     f->print(llvm::nulls());
 
@@ -88,14 +80,15 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 
         fsm.FunctionName(funName);
 
-        ctx.addFoo();
-        ctx.lastFoo->name = funName;
+        ctx.addFunction(funName);
 
         allFunctions[ funName ] = ctx.lastFoo;
 
+        /// MAIN FUNCTION
         ProcessStmt(body);
         // lazy
         //ProcessReturnNone();
+
         Reset();
     }
 
@@ -181,6 +174,36 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
             }
         }
     }
+    else if( auto tr = dyn_cast<CXXTryStmt>(stmt))
+    {
+//        std::cout << "try expr" << std::endl;
+//        tr->dump();
+        if( auto trBlock = dyn_cast<CompoundStmt>(tr->getTryBlock()))
+        {
+            ProcessCompound(trBlock, addToStates);
+        }
+
+    }
+    else if( auto exWithClUp = dyn_cast<ExprWithCleanups>(stmt))
+    {
+        auto thr = exWithClUp->children().begin();
+        if( auto throws = dyn_cast<CXXThrowExpr>(*thr))
+        {
+            // TODO: переделать, добавить обработку throw
+//            std::cout << "throw expr" << std::endl;
+//            throws->dump();
+        }
+    }
+    else if( auto cycle = dyn_cast<WhileStmt>(stmt))
+    {
+//        std::cout << "while" << std::endl;
+        ProcessStmt(cycle->getBody());
+    }
+    else if( auto cycle2 = dyn_cast<ForStmt>(stmt))
+    {
+//        std::cout << "while" << std::endl;
+        ProcessStmt(cycle2->getBody());
+    }
     else if( auto rhsRefExpr = dyn_cast<CallExpr>(stmt))
     {
         auto callee = rhsRefExpr->getCallee();
@@ -190,18 +213,29 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
             if( auto foo = dyn_cast<DeclRefExpr>(subExpr->getSubExpr()))
             {
                 std::string fooName = foo->getNameInfo().getName().getAsString();
-
-                if( fooName == "free" )
+// TODO: make set of free_functions
+#ifdef __unix__
+                if( fooName == "free" || fooName == "close" || fooName == "fclose" )
+#else
+                    if( fooName == "free" || fooName == "closesoket" || fooName == "fclose")
+#endif
                 {
                     auto x = rhsRefExpr->getArg(0);
                     std::string varName;
 
                     if( auto im = dyn_cast<ImplicitCastExpr>(x))
                     {
-                        if( auto im2 = dyn_cast<ImplicitCastExpr>(im->getSubExpr()))
+                        if( auto im2 = dyn_cast<ImplicitCastExpr>(im->getSubExpr())) // for free
                         {
                             auto x2 = im2->getSubExpr()->getStmtClassName();
                             if( auto d = dyn_cast<DeclRefExpr>(im2->getSubExpr()))
+                            {
+                                varName = d->getNameInfo().getName().getAsString();
+                            }
+                        }
+                        else // for sockets
+                        {
+                            if( auto d = dyn_cast<DeclRefExpr>(im->getSubExpr()))
                             {
                                 varName = d->getNameInfo().getName().getAsString();
                             }
@@ -224,17 +258,17 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
 
 bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToStates )
 {
-    Target::Statement *state = ctx.createCompoundStatement(addToStates);
+    ctx.createCompoundStatement(addToStates);
 
-    ctx.setIf(state);
+//    ctx.setIf(state);
 
-    auto iter = body->body_begin();
-    for( ; iter != body->body_end(); ++iter )
+    for( auto iter = body->body_begin(); iter != body->body_end(); ++iter )
     {
+//        (*iter)->dump();
         ProcessStmt(*iter);
     }
 
-    ctx.addCompoundStatement();
+//    ctx.addCompoundStatement();
     ctx.popCompound();
 
     return true;
@@ -242,7 +276,6 @@ bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToState
 
 bool ESCAASTVisitor::ProcessAssignment( clang::BinaryOperator *binop )
 {
-    // blablabla
     Cout << "assignment \n";
     using namespace clang;
 
@@ -512,26 +545,25 @@ bool ESCAASTVisitor::ProcessReturnPtr( clang::ReturnStmt *ret )
 bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
 {
     Cout << "If statement!\n";
-    using namespace clang;
-
+//    ifstmt->dump();
     auto cond = ifstmt->getCond();
     {
         auto curCond = cond;
-        if( auto c = dyn_cast<UnaryOperator>(curCond))
+        if( auto c = clang::dyn_cast<clang::UnaryOperator>(curCond))
         {
             curCond = c->getSubExpr();
         }
 
-        if( auto castSt = dyn_cast<CastExpr>(curCond))
+        if( auto castSt = clang::dyn_cast<clang::CastExpr>(curCond))
         {
             auto sub4 = castSt->getSubExpr();
-            if( auto castSt3 = dyn_cast<CastExpr>(sub4))
+            if( auto castSt3 = clang::dyn_cast<clang::CastExpr>(sub4))
             {
                 auto sub3 = castSt3->getSubExpr();
-                if( auto parenSt = dyn_cast<ParenExpr>(sub3))
+                if( auto parenSt = clang::dyn_cast<clang::ParenExpr>(sub3))
                 {
                     auto sub = parenSt->getSubExpr();
-                    if( auto bo = dyn_cast<BinaryOperator>(sub))
+                    if( auto bo = clang::dyn_cast<clang::BinaryOperator>(sub))
                     {
                         if( bo->isAssignmentOp())
                         {
@@ -545,22 +577,41 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     std::string typeS;
     llvm::raw_string_ostream lso(typeS);
     clang::LangOptions langOpts;
-    langOpts.CPlusPlus11 = true;
-    PrintingPolicy pol(langOpts);
-    cond->printPretty(lso, 0, pol);
+    langOpts.CPlusPlus17 = true;
+    clang::PrintingPolicy pol(langOpts);
+    cond->printPretty(lso, nullptr, pol);
     std::string condStr = "~if - " + lso.str();
     std::string elseStr = "~else - " + condStr;
     Cout << "\tCondition: " << condStr << "\n";
+
     //TODO: Create the state branching.
     Target::Statement *thenSt = nullptr;
-    ctx.startIfSt(&thenSt);
+//    ctx.startIfSt(&thenSt);
+
+    // почему-то не заходим в then и в else,
+    // видимо для скорости
     ProcessStmt(ifstmt->getThen(), false);
 
     Target::Statement *elseSt = nullptr;
-    ctx.startIfSt(&elseSt);
-    ProcessStmt(ifstmt->getElse(), false);
+//    ctx.startIfSt(&elseSt);
+    if( ifstmt->hasElseStorage())
+    {
+        ProcessStmt(ifstmt->getElse(), false);
+    }
 
     ctx.addIfStatement(thenSt, elseSt, condStr, elseStr);
 
     return true;
+}
+
+bool ESCAASTVisitor::IsInExcludedPath( const std::string &file )
+{
+    for( const auto &path: excludedPaths )
+    {
+        if( file.find(path) != std::string::npos )
+        {
+            return true;
+        }
+    }
+    return false;
 }

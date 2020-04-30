@@ -1,48 +1,54 @@
 #ifndef ESCAASTVisitor_H
 #define ESCAASTVisitor_H
 
-#include <map>
-#include <vector>
-#include <memory>
-#include <string>
-#include <set>
-
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
 
-#include "../VersionedVariable.h"
-#include "../FSM/FSM.h"
-#include "../FSM/LeafPredicate.h"
-#include "PathStorage.h"
+#include "../target/Context.h"
 
-
-class ASTWalker;
 
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 {
 public:
-    ESCAASTVisitor();
+    ESCAASTVisitor() = default;
 
+    /// @brief основная функция, неявно вызывается при проходе по AST дереву
     bool VisitFunctionDecl( clang::FunctionDecl *f );
 
-public:
-    inline void SetWalker( ASTWalker *ast_walker )
+    /// @brief Метод устанавливает пути которые следиет исключить из анализа AST дерева
+    /// @param _paths - пути до директорий где хранятся библиотеки (#include<some_lib>)
+    inline void SetExcludedPaths( const std::vector<std::string> &_paths )
     {
-        walker = ast_walker;
+        excludedPaths = _paths;
     }
 
-    inline void SetPath( const std::string &_path )
+    inline void SetAnaliseFile( const std::string &file, bool fast = true )
     {
-        path->SetPath(_path);
+        needFast = fast;
+        analiseFile = file;
+    }
+
+    Target::Context getContext()
+    {
+        return ctx;
     }
 
 private:
+    /// @brief Получение сторки с названием файла и номером строки в нем, где находится состояние
+    /// @param st - состояние
+    std::string getLocation( const clang::Stmt *st );
+
+    /// @brief Сброс автомата состаяний и переменных текущей функции
     void Reset();
 
+    /// MAIN FUNCTION
     bool ProcessFunction( clang::FunctionDecl *f );
 
-    bool ProcessStmt( clang::Stmt *stmt, bool = true );
+    /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
+    /// @param stmt - состояние которое нужно проверить
+    /// @param addToState - нужно ли сохранять в контекст
+    bool ProcessStmt( clang::Stmt *stmt, bool addToState = true );
 
     bool ProcessCompound( clang::CompoundStmt *body, bool );
 
@@ -57,17 +63,33 @@ private:
     bool ProcessIf( clang::IfStmt *ifstmt );
 
     bool ProcessReturnNone(); //Pointers are not returned.
+
     bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
+
+    /// @brief метод проверяет находится ли файл в исключенных директориях
+    /// @param file - путь до файла который нужно проверить
+    /// @return true - если файл внутри директории, false иначе
+    bool IsInExcludedPath( const std::string &file );
+
 private:
-    ASTWalker *walker;
-    std::shared_ptr<PathStorage> path;
+    /// @brief Хранит весь контекст и состояния
+    Target::Context ctx;
+
+    /// @brief Нужен для получения строки в текущей функции
+    clang::SourceManager *currSM = nullptr;
+
+    std::map<std::string, std::string> staticFuncMapping;
+
+    ///@brief пути до системных библиотек и тех которые следует исключить из анализа
+    std::vector<std::string> excludedPaths;
 
     //std::map<std::string, std::vector<VersionedVariable> > variables;
     //std::map<std::string, int> variables;
 
     // ������ �������
     std::map<std::string, PtrCounter> variables;
-
+    std::string analiseFile;
+    bool needFast = true;
     std::vector<VersionedVariable> allocated;
     FSM fsm;
 

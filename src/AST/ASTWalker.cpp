@@ -1,10 +1,5 @@
-#include <clang/Basic/DiagnosticOptions.h>
-#include <clang/Basic/LangOptions.h>
-#include <clang/Basic/FileSystemOptions.h>
-#include <clang/Basic/FileManager.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/Basic/Builtins.h>
-#include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/CompilerInvocation.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
@@ -19,64 +14,50 @@
 
 #include <llvm/Support/Host.h>
 #include <llvm/IR/Function.h>
+#include <iostream>
 
 #include "ASTWalker.h"
-#include "ESCAASTConsumer.h"
 
 ASTWalker::ASTWalker()
-        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer)
+        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer())
 {
-    astConsumer->SetWalker(this);
 }
 
 ASTWalker::~ASTWalker()
 {
-    delete astConsumer;
-    delete astContext;
+//    delete astConsumer;
+//    delete astContext;
 }
 
-void ASTWalker::SetIncludeDirectories( bool ignore_sys_root = false, bool is_framework = false )
+void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
 {
-    std::vector<std::string> paths;
-//    headerSearchOptions->ResourceDir = "/usr/include/c++/7/include/";
-#ifdef __linux__
-    paths = {
-            "/usr/include/",
-            "/usr/include/c++/7/",
-            "/usr/include/x86_64-linux-gnu/",
-            "/usr/include/x86_64-linux-gnu/c++/7/",
-            "/usr/lib/gcc/x86_64-linux-gnu/7/include/"
-    };
-#endif
-#ifdef _WIN32
-    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include", clang::frontend::Angled,
-    //        false, false);
-    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5" , clang::frontend::Angled,
-    //        false, false);
-    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\include\\c++\\3.4.5\\mingw32" , clang::frontend::Angled,
-    //        false, false);
-    //    headerSearchOptions->AddPath("D:\\Portable\\MinGW\\lib\\gcc\\mingw32\\3.4.5\\include" , clang::frontend::Angled,
-    //        false, false);
-#endif
-
+    astConsumer->SetExcludedPaths(paths); // исключаем из анализа системные директории
     for( const auto &path : paths )
     {
-        // TODO: разобраться почему идет проверка и вывод информации о системных либах
-//        headerSearchOptions->AddSystemHeaderPrefix(path, true);
-//        headerSearchOptions->AddPath(path, clang::frontend::System, is_framework, ignore_sys_root);
-        headerSearchOptions->AddPath(path, clang::frontend::Angled, is_framework, ignore_sys_root);
+        headerSearchOptions->AddPath(path, clang::frontend::Angled, false, false);
     }
 }
 
-void ASTWalker::WalkAST( const std::string &path )
+bool ASTWalker::WalkAST( const std::string &path )
 {
-    clang::DiagnosticOptions diagnosticOptions;
-    auto *pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::outs(), &diagnosticOptions);
-    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
-    auto pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs,
-                                                           &diagnosticOptions, pTextDiagnosticPrinter);
+    astConsumer->SetAnaliseFile(path);
 
-    clang::LangOptions languageOptions;
+    clang::DiagnosticOptions diagnosticOptions;
+    // TextDiagnosticPrinter анализирует файлы, чтобы не выводил весь анализ в stdout,
+    // создаем файл куда и выводим всю информацию
+    std::error_code ec;
+    llvm::raw_fd_ostream dbg_inf("diagnostic_info.txt", ec);
+    if( ec )
+    {
+        std::cerr << ec.message() << std::endl;
+        return false;
+    }
+
+    auto pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(dbg_inf, &diagnosticOptions);
+
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
+    auto pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs, &diagnosticOptions, pTextDiagnosticPrinter);
+
     clang::FileSystemOptions fileSystemOptions = clang::FileSystemOptions();
     clang::FileManager fileManager(fileSystemOptions);
 
@@ -85,17 +66,15 @@ void ASTWalker::WalkAST( const std::string &path )
     clang::InputKind ik(clang::Language::CXX, clang::InputKind::Source, false);
     llvm::Triple triple;
     clang::PreprocessorOptions ppopts;
+    clang::LangOptions languageOptions;
+
     clang::CompilerInvocation::setLangDefaults(languageOptions, ik, triple, ppopts);
     languageOptions.ImplicitInt = 1;
 
-    SetIncludeDirectories();
+
     auto targetOptions = std::make_shared<clang::TargetOptions>();
     targetOptions->Triple = llvm::sys::getDefaultTargetTriple();
-    targetOptions->CPU = llvm::sys::getHostCPUName();
-    clang::TargetInfo *pTargetInfo =
-            clang::TargetInfo::CreateTargetInfo(
-                    *pDiagnosticsEngine,
-                    targetOptions);
+    clang::TargetInfo *pTargetInfo = clang::TargetInfo::CreateTargetInfo(*pDiagnosticsEngine, targetOptions);
 
     clang::HeaderSearch headerSearch(headerSearchOptions,
                                      sourceManager,
@@ -112,7 +91,8 @@ void ASTWalker::WalkAST( const std::string &path )
             languageOptions,
             sourceManager,
             headerSearch,
-            compInst);
+            compInst
+    );
 
     preprocessor.Initialize(*pTargetInfo);
 
@@ -130,11 +110,17 @@ void ASTWalker::WalkAST( const std::string &path )
             preprocessor,
             *pOpts,
             containerReader,
-            frontendOptions);
+            frontendOptions
+    );
 
 
     llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(path);
 //    clang::SourceLocation sourceLocation;
+    if( !pFile )
+    {
+        std::cerr << pFile.getError().message() << ", path: " << path << std::endl;
+        return false;
+    }
     auto mainID = sourceManager.getOrCreateFileID(pFile.get(), clang::SrcMgr::C_System);
     sourceManager.setMainFileID(mainID);
     const clang::TargetInfo &targetInfo = *pTargetInfo;
@@ -145,19 +131,33 @@ void ASTWalker::WalkAST( const std::string &path )
     clang::Builtin::Context builtinContext;
     builtinContext.InitializeTarget(targetInfo, nullptr);
 
-    astContext = new clang::ASTContext(languageOptions, sourceManager, identifierTable, selectorTable, builtinContext);
+    astContext = std::make_unique<clang::ASTContext>(languageOptions, sourceManager, identifierTable, selectorTable,
+                                                     builtinContext);
     astContext->InitBuiltinTypes(targetInfo);
 //    astConsumer->Initialize(*astContext);
     {
-        astConsumer->SetPath(path);
         pTextDiagnosticPrinter->BeginSourceFile(languageOptions, &preprocessor);
-        clang::ParseAST(preprocessor, astConsumer, *astContext);
+        clang::ParseAST(preprocessor, static_cast<clang::ASTConsumer *>(astConsumer.get()), *astContext);
         pTextDiagnosticPrinter->EndSourceFile();
     }
+    return true;
 }
 
 void ASTWalker::DumpStmt( clang::Stmt *s )
 {
     s->dump(llvm::errs(), astContext->getSourceManager());
     s->dump();
+}
+
+Target::Context ASTWalker::GetContext()
+{
+    return astConsumer->GetContext();
+}
+
+void ASTWalker::RunAnalyzer()
+{
+    for( auto p : allFunctions )
+    {
+        p.second->process();
+    }
 }

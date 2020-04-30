@@ -20,11 +20,11 @@ struct PtrCounter
 class Variable
 {
 public:
-    Variable() = default; // TODO: make it delete
+    Variable() = delete;
 
     Variable( const Variable &v ) = default;
 
-    Variable( const std::string &type, const std::string &name, const std::string &loc, EMetaType mt )
+    Variable( const std::string &name, const std::string &loc, EMetaType mt, const std::string &type = "" )
             : name(name), type(type), loc(loc), metaType(mt)
     {
     }
@@ -59,7 +59,17 @@ public:
         loc = l;
     }
 
-    std::string TypeSMT() const;
+    std::string TypeSMT() const
+    {
+        if((type.find("float") != std::string::npos) ||
+           (type.find("double") != std::string::npos))
+        {
+            return "Real";
+        }
+
+        return "Int";
+
+    }
 
 protected:
     std::string name;

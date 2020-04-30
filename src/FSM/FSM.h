@@ -1,17 +1,10 @@
 #ifndef FSM_H
 #define FSM_H
 
-#include <vector>
-#include <deque>
-#include <map>
-#include <memory>
 #include <set>
 
-#include "StateFSM.h"
 #include "TransitionFSM.h"
 #include "LeafPredicate.h"
-#include "../VersionedVariable.h"
-#include "../SMT/FormulaSMT.h"
 
 typedef std::vector<StateFSM> StatesStorage;
 typedef std::vector<TransitionFSM> TransitionsStorage;
@@ -26,6 +19,7 @@ class FSM
 public:
     FSM();
 
+    /// @brief Сброс состояний автомата до одного стартового
     void Reset();
 
     std::string FunctionName() const
@@ -90,8 +84,6 @@ public:
 
     void ProcessReturnNone();
 
-
-public:
     void SetReturnVarName( const std::set<std::string> &varName )
     {
         returnVarName = varName;
@@ -104,17 +96,14 @@ public:
         isAllocReturns = false;
     }
 
+    /// @brief Возвращает ли функция указатель на выделенную память
+    /// @return true - возвращает, иначе - false
     bool IsAllocReturns()
     {
         return isAllocReturns;
     }
 
-private:
-    std::set<std::string> returnVarName;
-    bool isAllocReturns = false;
-
-#ifdef DEBUG
-public: //debug
+#ifdef SAVE_XML
 
     void SaveToXML();
 
@@ -122,7 +111,13 @@ public: //debug
 
 #endif
 
-private://internal functions
+private:
+    std::set<std::string> returnVarName;
+
+    /// @brief флаг того что функция возвращает указатель на выделенную память
+    bool isAllocReturns = false;
+
+//internal functions
     void CreateStart();
 
     void HandleDeletePtr( const VersionedVariable &v, std::vector<VersionedVariable> &alloc,
@@ -134,11 +129,15 @@ private://internal functions
 
     bool MatchEvents( FSMID stateID );
 
-private: //member variables
+//member variables
     std::string functionName;
+
+    /// @brief Все состояния автомата
     StatesStorage states;
+
     TransitionsStorage transitions;
     int iSat;
+
     ConditionStorage events;
 };
 

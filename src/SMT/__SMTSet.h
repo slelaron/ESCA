@@ -1,9 +1,10 @@
+/// unused file
 #ifndef SMTSET_H
 #define SMTSET_H
 
 #include <set>
 
-#include "../VersionedVariable.h"
+#include "VersionedVariable.h"
 
 class SMTSet
 {

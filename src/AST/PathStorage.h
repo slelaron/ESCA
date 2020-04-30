@@ -1,3 +1,4 @@
+/// unused file
 #ifndef PATH_STORAGE_H
 #define PATH_STORAGE_H
 
@@ -6,9 +7,9 @@
 class PathStorage
 {
 public:
-    PathStorage() = default;
+    PathStorage() = delete;
 
-    PathStorage( const std::string &path )
+    explicit PathStorage( const std::string &path )
     {
         SetPath(path);
     }
