@@ -3,95 +3,43 @@
 namespace Target
 {
 
-/// @brief Структура в которой сохраняются информация о состояниях
+/// @brief Синглтон структура в которой сохраняется информация о всех состояниях анализируемой программы
 class Context
 {
 public:
-    Context();
+    Context( Context const & ) = delete;
 
-    Function *lastFoo;
+    Context &operator=( Context const & ) = delete;
 
-    void addFunction( const std::string &name );
+    /// @brief Возвращает единственный экземпляр контекста
+    static Context &Instance();
 
-    Statement *
-    addDeleteStatement( const std::string &name, bool isArray );
+    /// @brief Текущая анализируемая функция
+    Function *curFunction;
 
-    Statement *
-    addIfStatement( Statement *thenSt, Statement *elseSt, const std::string &condStr, const std::string &elseStr );
+    /// @brief Добавляем новую анализируемую функцию
+    void AddFunction( const std::string &name );
 
-    Statement *
-    createCompoundStatement( bool addToStates = true );
+    /// @brief Метод создает составное состояние и добавляет его на вершину стэка
+    void createCompoundStatement( bool addToStates = true );
 
-    Statement *
-    addVarDeclFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc );
-
-    Statement *
-    addVarDeclNew( const std::string &varName, bool isArray, const std::string &loc );
-
-    Statement *
-    addVarAssigmentFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc );
-
-    Statement *
-    addVarAssigmentFromPointer( const std::string &varName, const std::string &rhsName, const std::string &loc );
-
-    Statement *
-    addVarAssigmentNew( const std::string &varName, bool isArray, const std::string &loc );
-
-    Statement *
-    addReturn( const std::string &returnVarName );
-
+    /// @brief Метод удаляет последнее составное состояние со стека
     void popCompound();
 
-    //кладет с вершины стэка в общую схему
-    // FIXME: видимо больше не кладет
-//    void addCompoundStatement()
-//    {
-//        //if (stackSt.size() > 1) {
-//        //    stackSt[stackSt.size() - 2]->addState(stackSt.back());
-//        //}
-//        //addToLast(stackSt.back());
-//    }
+    /// @brief Метод добавляет к последнему составному состоянию в стеке вложеное состояние
+    void addToLast( Statement *s );
+
+    std::map<std::string, Target::Function *> *getAllFunction();
 
 private:
-    Statement *addToLast( Statement *s );
 
-    std::vector<Function *> extFunctions;
+    Context();
 
-    std::vector<CompoundStatement *> stackSt;
+    /// @brief Стек с составными состояниями
+    std::vector<CompoundStatement *> compoundStatementsStack;
 
-
-    //Statement* getLastPoped() {
-    //    auto tmp = lastPoped;
-    //    lastPoped = nullptr;
-    //    return tmp;
-    //}
-
-
-    //    Statement **nextInIf = nullptr;
-//    bool isIf = false;
-//
-//    void setIf( Statement *s )
-//    {
-//
-//        if( nextInIf )
-//        {
-//            *nextInIf = s;
-//            nextInIf = nullptr;
-//        }
-//    }
-//
-//    void startIfSt( Statement **s )
-//    {
-//        nextInIf = s;
-//        isIf = true;
-//    }
-
-    //Statement* getAfterIfStatement() {
-    //    auto tmp = nextInIf;
-    //    nextInIf = nullptr;
-    //    isIf = false;
-    //    return tmp;
-    //}
+    /// @brief все фукнции которые будут проанализированы
+    std::map<std::string, Target::Function *> allFunctions;
 
 };
 }

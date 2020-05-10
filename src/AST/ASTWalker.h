@@ -7,7 +7,6 @@
 #include "ESCAASTConsumer.h"
 
 
-
 class ASTWalker
 {
 public:
@@ -15,17 +14,22 @@ public:
 
     ~ASTWalker();
 
-    bool WalkAST( const std::string &path );
+    /// @brief Проходим по файлу и сохранаем информацию в контекст
+    bool WalkAST( const std::string &fileName );
 
-    void DumpStmt( clang::Stmt *s );
+#ifdef TEXT_DIAG
 
     /// @brief Добавляет файлы где искать include библиотеки используемые в проекте
     /// @param paths - список директорий, содержащих библиотеки
     void SetIncludeDirectories( const std::vector<std::string> &paths );
 
-    Target::Context GetContext();
+#endif
 
-    void RunAnalyzer();
+#ifdef DEBUG
+
+    void DumpStmt( clang::Stmt *s );
+
+#endif
 
 protected:
     std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;

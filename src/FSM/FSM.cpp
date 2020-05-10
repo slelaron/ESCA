@@ -32,7 +32,7 @@ std::string PrintSMT( int iSat, const FormulaStorage &f )
     return ss.str();
 }
 
-FSM::FSM() : iSat(0)
+FSM::FSM( const std::string &functionName ) : iSat(0), functionName(functionName)
 {
     CreateStart();
 }
@@ -44,7 +44,7 @@ void FSM::CreateStart()
     states.push_back(start);
 }
 
-void FSM::Reset()
+FSM::~FSM()
 {
 #ifdef SAVEXML
     SaveToXML();
@@ -54,7 +54,7 @@ void FSM::Reset()
     events.clear();
     iSat = 0;
     std::string().swap(functionName);
-    CreateStart();
+//    CreateStart();
 }
 
 bool FSM::GetState( FSMID id, StateFSM &s )

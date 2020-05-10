@@ -29,20 +29,11 @@ ASTWalker::~ASTWalker()
 //    delete astContext;
 }
 
-void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
+bool ASTWalker::WalkAST( const std::string &fileName )
 {
-    astConsumer->SetExcludedPaths(paths); // исключаем из анализа системные директории
-    for( const auto &path : paths )
-    {
-        headerSearchOptions->AddPath(path, clang::frontend::Angled, false, false);
-    }
-}
-
-bool ASTWalker::WalkAST( const std::string &path )
-{
-    astConsumer->SetAnaliseFile(path);
-
+    Options::Instance().analyzeFile = fileName;
     clang::DiagnosticOptions diagnosticOptions;
+#ifdef TEXT_DIAG
     // TextDiagnosticPrinter анализирует файлы, чтобы не выводил весь анализ в stdout,
     // создаем файл куда и выводим всю информацию
     std::error_code ec;
@@ -52,8 +43,10 @@ bool ASTWalker::WalkAST( const std::string &path )
         std::cerr << ec.message() << std::endl;
         return false;
     }
-
     auto pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(dbg_inf, &diagnosticOptions);
+#else
+    auto pTextDiagnosticPrinter = new clang::TextDiagnosticPrinter(llvm::nulls(), &diagnosticOptions);
+#endif
 
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
     auto pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs, &diagnosticOptions, pTextDiagnosticPrinter);
@@ -114,20 +107,20 @@ bool ASTWalker::WalkAST( const std::string &path )
     );
 
 
-    llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(path);
+    llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager.getFile(fileName);
 //    clang::SourceLocation sourceLocation;
     if( !pFile )
     {
-        std::cerr << pFile.getError().message() << ", path: " << path << std::endl;
+        std::cerr << pFile.getError().message() << ", file: " << fileName << std::endl;
         return false;
     }
+
     auto mainID = sourceManager.getOrCreateFileID(pFile.get(), clang::SrcMgr::C_System);
     sourceManager.setMainFileID(mainID);
     const clang::TargetInfo &targetInfo = *pTargetInfo;
 
     clang::IdentifierTable identifierTable(languageOptions);
     clang::SelectorTable selectorTable;
-
     clang::Builtin::Context builtinContext;
     builtinContext.InitializeTarget(targetInfo, nullptr);
 
@@ -143,21 +136,25 @@ bool ASTWalker::WalkAST( const std::string &path )
     return true;
 }
 
+#ifdef TEXT_DIAG
+
+void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
+{
+    for( const auto &path : paths )
+    {
+        headerSearchOptions->AddPath(path, clang::frontend::System, false, false);
+    }
+}
+
+#endif
+
+#ifdef DEBUG
+
 void ASTWalker::DumpStmt( clang::Stmt *s )
 {
     s->dump(llvm::errs(), astContext->getSourceManager());
     s->dump();
 }
 
-Target::Context ASTWalker::GetContext()
-{
-    return astConsumer->GetContext();
-}
+#endif
 
-void ASTWalker::RunAnalyzer()
-{
-    for( auto p : allFunctions )
-    {
-        p.second->process();
-    }
-}

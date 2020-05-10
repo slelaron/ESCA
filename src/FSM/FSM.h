@@ -17,19 +17,14 @@ typedef std::deque<ConditionEvent> ConditionStorage;
 class FSM
 {
 public:
-    FSM();
+    explicit FSM( const std::string &functionName );
 
     /// @brief Сброс состояний автомата до одного стартового
-    void Reset();
+    ~FSM();
 
     std::string FunctionName() const
     {
         return functionName;
-    }
-
-    void FunctionName( const std::string &val )
-    {
-        functionName = val;
     }
 
     inline void AddState( const StateFSM &s )
@@ -44,7 +39,7 @@ public:
 
     bool GetState( FSMID id, StateFSM &s );
 
-    bool GetTransition( FSMID id, TransitionFSM &t );
+//    bool GetTransition( FSMID id, TransitionFSM &t );
 
     inline FSMID GetNewStateID() const
     {

@@ -7,6 +7,7 @@ set(CMAKE_BUILD_TYPE DEBUG)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++17")
 
 add_compile_definitions(DEBUG)
+add_compile_definitions(TEXT_DIAG)
 #add_compile_definitions(SAVE_XML)
 #add_compile_definitions(DEBUGOUT)
 

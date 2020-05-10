@@ -14,10 +14,10 @@ typedef std::string ConditionEvent;
 
 //class TransitionFSM;
 std::string FormulaeToString( const FormulaStorage &formulae );
-
+//
 std::string FormulaeToStringSat( const FormulaStorage &formulae );
 
-/// @brief одно из состояний автомата
+/// @brief Одно из состояний автомата
 class StateFSM
 {
 public:
@@ -38,7 +38,7 @@ public:
 
     std::string PrintFormulaeSat();
 
-    [[nodiscard]] inline bool IsLeaf() const
+    inline bool IsLeaf() const
     {
         return (!isEnd) && outgoing.empty();
     }

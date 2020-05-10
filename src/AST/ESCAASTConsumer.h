@@ -5,7 +5,7 @@
 #include <clang/AST/DeclGroup.h>
 
 #include "ESCAASTVisitor.h"
-
+#include "../utils/common.h"
 
 class ESCAASTConsumer : public clang::ASTConsumer
 {
@@ -13,29 +13,24 @@ public:
     /// @brief Переопределяемая функция для прохода по AST дереву нашим AST visitor
     bool HandleTopLevelDecl( clang::DeclGroupRef DR ) override
     {
+        std::string loc;
         for( auto it : DR )
         {
-            // Traverse the declaration using our AST visitor.
+            loc = it->getLocation().printToString(it->getASTContext().getSourceManager());
+            if( loc.find(Options::Instance().analyzeFile) == std::string::npos )
+            {
+                return true;
+            }
+//            it->dump();
             visitor.TraverseDecl(it);
+
+//            it->getLocation().printToString()
+//            it->dump();
+            // Traverse the declaration using our AST visitor.
         }
 
+//        std::cout << "heeerrrree" << std::endl;
         return true;
-    }
-
-    /// @brief Запоминаем пути для AST visitor которые следует проигнорировать
-    inline void SetExcludedPaths( const std::vector<std::string> &path )
-    {
-        visitor.SetExcludedPaths(path);
-    }
-
-    inline void SetAnaliseFile( const std::string &file )
-    {
-        visitor.SetAnaliseFile(file);
-    }
-
-    Target::Context GetContext()
-    {
-        return visitor.getContext();
     }
 
 private:
