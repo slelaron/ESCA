@@ -5,14 +5,15 @@
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
 
-//#include "../SMT/Variable.h"
 
+/// @class Класс, который выполняет предварительный обход всего Clang AST дерева и посещает каждый узел.
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 {
 public:
     ESCAASTVisitor() = default;
 
-    /// @brief основная функция, неявно вызывается при проходе по AST дереву
+    /// @brief Метод для посещения функции
+    /// @param f - основная функция
     bool VisitFunctionDecl( clang::FunctionDecl *f );
 
 private:
@@ -20,7 +21,8 @@ private:
     /// @param st - состояние
     std::string getLocation( const clang::Stmt *st );
 
-    /// MAIN FUNCTION
+    /// @brief Метод для посещения функции
+    /// @param f - основная функция
     bool ProcessFunction( clang::FunctionDecl *f );
 
     /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
@@ -30,9 +32,11 @@ private:
 
     bool ProcessCompound( clang::CompoundStmt *body, bool );
 
-    bool ProcessAssignment( clang::BinaryOperator *binop );
-
     bool ProcessDeclaration( clang::VarDecl *vd );
+
+    /// @brief Метод анализирует операцию присваивания
+    /// @param binop - состояние операции присваивания
+    bool ProcessBinOp( clang::BinaryOperator *binop );
 
     bool ProcessDelete( clang::CXXDeleteExpr *del );
 
@@ -49,13 +53,22 @@ private:
 
 private:
 
-    /// @brief Нужен для получения строки в текущей функции
+    /// @brief Менеджер для получения строки в текущей функции
     clang::SourceManager *currSM = nullptr;
 
     std::map<std::string, std::string> staticFuncMapping;
 
     /// @brief Хранилище переменных
     std::set<std::string> variables;
+
+    void
+    AddVarDeclFromFoo( const std::string &varName, std::string &fooName, const std::string &location, bool isDecl );
+
+    /// @brief Метод анализирует операцию присваивания
+    /// @param init - инициализатор переменной
+    /// @param lhsName - имя алоцируемой переменной
+    /// @param isDecl - проделорирована ли переменная
+    bool ProcessAssignment( const clang::Stmt *init, const std::string &lhsName, bool isDecl );
 
 };
 

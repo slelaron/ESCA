@@ -10,7 +10,7 @@ class DefectStorage
 public:
     static DefectStorage &Instance();
 
-    [[nodiscard]] std::vector<std::string> Defects() const
+    std::vector<std::string> Defects() const
     {
         return defects;
     }

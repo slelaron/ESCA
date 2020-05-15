@@ -17,10 +17,23 @@ public:
         for( auto it : DR )
         {
             loc = it->getLocation().printToString(it->getASTContext().getSourceManager());
-            if( loc.find(Options::Instance().analyzeFile) == std::string::npos )
+//            std::cout << loc << std::endl;
+            auto colonId = loc.find(':');
+            if( colonId != std::string::npos )
+            {
+                loc = loc.substr(0, colonId);
+            }
+            if( CommonStorage::Instance().InIncludeDirs(loc))
             {
                 return true;
             }
+            CommonStorage::Instance().AddAnalyzeFile(loc);
+            std::cout << loc << std::endl;
+
+//            if( loc.find(Options::Instance().analyzeFile) == std::string::npos )
+//            {
+//                return true;
+//            }
 //            it->dump();
             visitor.TraverseDecl(it);
 

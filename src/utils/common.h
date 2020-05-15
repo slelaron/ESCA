@@ -1,48 +1,68 @@
+/// @file common.h
+///
+/// @brief Файл в котором храняться общие данные для всего проекта
+///
+/// @author alexust27
+/// Contact: ustinov1998s@gmail.com
+///
 #ifndef ESCA_COMMON_H
 #define ESCA_COMMON_H
 
 #include <set>
 #include <vector>
 
-class Options
+class CommonStorage
 {
 public:
 
-    Options( Options const & ) = delete;
+    CommonStorage( CommonStorage const & ) = delete;
 
-    Options &operator=( Options const & ) = delete;
+    CommonStorage &operator=( CommonStorage const & ) = delete;
 
-    static Options &Instance()
+    static CommonStorage &Instance()
     {
-        static Options instance;
+        static CommonStorage instance;
         return instance;
     }
 
-    /// @brief Флаг быстроты анализа, true - быстро, false - медленно, но досканально
+    /// @brief Флаг быстроты анализа
     bool needFast;
 
-    /// @brief Основной файл который сейчас анализируется
+    /// @brief Файл, который сейчас анализируется
     std::string analyzeFile;
 
     /// @brief Метод устанавливает пути (которые следиет исключить из анализа AST дерева)
-    /// @param _paths - пути до директорий где хранятся библиотеки (#include<some_lib>)
-    void setIncludeDirs( const std::vector<std::string> &inclPaths );
+    /// @param inclPaths - пути до директорий где хранятся библиотеки (#include<some_lib>)
+    void SetIncludeDirs( const std::vector<std::string> &inclPaths );
 
-    /// @brief метод проверяет находится ли файл в include директориях
+    /// @brief Метод проверяет находится ли файл в include директориях
     /// @param file - путь до файла который нужно проверить
     /// @return true - если файл внутри директории, false иначе
-    bool isInIncludeDirs( const std::string &path );
+    bool InIncludeDirs( const std::string &file );
 
+    /// @brief Метод добавляет файл к уже проанализированным файлам
+    /// @param file - имя файла
+    /// @return false - если такой файл уже был добавлен, true - операция прошла успешно
+    bool AddAnalyzeFile( const std::string &file );
+
+    /// @brief Метод проверяет проанализирован ли файл
+    /// @param file - файла, который нужно проверить
+    /// @return true - если файл уже проанализирован, false - иначе
+    bool IsAlreadyAnalyzed( const std::string &file );
 
 private:
+
+    /// @brief Пути до include директорий
     std::vector<std::string> includeDirs;
 
-    Options()
+    /// @brief Проанализированные файлы
+    std::set<std::string> analyzedFiles;
+
+    /// @brief Конструктор
+    CommonStorage()
     {
         needFast = false;
     };
-
-    static Options *pInstance;
 
 };
 

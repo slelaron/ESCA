@@ -1,3 +1,11 @@
+/// @file Statements.h
+///
+/// @brief Класс всех состояний анализируемого кода
+///
+/// @author alexust27
+/// Contact: ustinov1998s@gmail.com
+///
+
 #include <map>
 #include <set>
 #include <vector>
@@ -6,19 +14,18 @@
 enum STATEMENTS
 {
     COMPOUND,
-    DELETE,
-    IF,
-    VarDeclFromFoo,
-    VarDeclNew,
+    VarAssigmentNew,
     VarAssigmentFromFoo,
     VarAssigmentFromPointer,
-    VarAssigmentNew,
+    DELETE,
+    IF,
     Return,
     UNKNOWN
 };
 
 namespace Target
 {
+/// @brief Общий класс для всех состояний анализируемого кода
 class Statement
 {
 public:
@@ -46,10 +53,61 @@ public:
         return STATEMENTS::COMPOUND;
     }
 
-//    void process( ProcessCtx &ctx ) override;
-
 private:
     std::vector<Statement *> statements;
+};
+
+
+class VarAssigmentFromFooStatement : public Statement
+{
+public:
+    VarAssigmentFromFooStatement( const std::string &varName, const std::string &fooName, const std::string &loc,
+                                  bool isDecl );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentFromFoo;
+    }
+
+    bool isDecl;
+    std::string varName;
+    std::string fooName;
+    std::string loc;
+};
+
+
+class VarAssigmentFromPointerStatement : public Statement
+{
+public:
+    VarAssigmentFromPointerStatement( const std::string &varName, const std::string &rhsName,
+                                      const std::string &loc, bool isDecl );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentFromPointer;
+    }
+
+    std::string varName;
+    std::string loc;
+    std::string rhsName;
+    bool isDecl;
+};
+
+/// auto x = new X;
+class VarAssigmentNewStatement : public Statement
+{
+public:
+    VarAssigmentNewStatement( const std::string &varName, bool isArray, const std::string &loc, bool isDecl );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentNew;
+    }
+
+    std::string varName;
+    std::string loc;
+    bool isArray;
+    bool isDecl;
 };
 
 
@@ -83,91 +141,6 @@ public:
     Statement *elseSt = nullptr;
     std::string condStr;
     std::string elseStr;
-};
-
-
-class VarDeclFromFooStatement : public Statement
-{
-public:
-    VarDeclFromFooStatement( const std::string &varName, const std::string &fooName,
-                             const std::string &loc );
-
-    STATEMENTS GetType() override
-    {
-        return STATEMENTS::VarDeclFromFoo;
-    }
-
-    std::string varName;
-    std::string fooName;
-    std::string loc;
-};
-
-
-class VarDeclNewStatement : public Statement
-{
-public:
-    VarDeclNewStatement( const std::string &varName, bool isArray, const std::string &loc );;
-
-    STATEMENTS GetType() override
-    {
-        return STATEMENTS::VarDeclNew;
-    }
-
-
-    std::string varName;
-    bool isArray;
-    std::string loc;
-};
-
-
-class VarAssigmentFromFooStatement : public Statement
-{
-public:
-    VarAssigmentFromFooStatement( const std::string &varName, const std::string &fooName, const std::string &loc );
-
-    STATEMENTS GetType() override
-    {
-        return STATEMENTS::VarAssigmentFromFoo;
-    }
-
-    std::string varName;
-    std::string fooName;
-    std::string loc;
-};
-
-
-class VarAssigmentFromPointerStatement : public Statement
-{
-public:
-    VarAssigmentFromPointerStatement( const std::string &varName, const std::string &rhsName,
-                                      const std::string &loc );
-
-    STATEMENTS GetType() override
-    {
-        return STATEMENTS::VarAssigmentFromPointer;
-    }
-
-//    void process( ProcessCtx &ctx ) override;
-
-    std::string varName;
-    std::string loc;
-    std::string rhsName;
-};
-
-
-class VarAssigmentNewStatement : public Statement
-{
-public:
-    VarAssigmentNewStatement( const std::string &varName, bool isArray, const std::string &loc );
-
-    STATEMENTS GetType() override
-    {
-        return STATEMENTS::VarAssigmentNew;
-    }
-
-    std::string varName;
-    bool isArray;
-    std::string loc;
 };
 
 

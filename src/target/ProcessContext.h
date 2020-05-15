@@ -2,6 +2,7 @@
 
 namespace Target
 {
+/// @class Контекст для одной функции, хранящий автомат операций
 class ProcessContext
 {
 public:
@@ -12,9 +13,10 @@ public:
 
     std::map<std::string, PtrCounter> variables;
 
-    /// @brief вектор аллоцированных переменных
+    /// @brief Вектор аллоцированных переменных
     std::vector<VersionedVariable> allocated;
 
+    /// @brief Автомат который хранит все операции(состояния) функции
     std::unique_ptr<FSM> fsm;
 
     FairLeafPredicate fairPred;

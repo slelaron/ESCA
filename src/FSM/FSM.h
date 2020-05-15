@@ -116,7 +116,7 @@ private:
     void CreateStart();
 
     void HandleDeletePtr( const VersionedVariable &v, std::vector<VersionedVariable> &alloc,
-                          std::vector<VersionedVariable> &del, StateFSM &delState );
+                          std::vector<VersionedVariable> &del, StateFSM &delState ) const;
 
     void CreateNewRetNoneState( StateFSM &leaf );
 

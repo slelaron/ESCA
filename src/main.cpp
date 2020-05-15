@@ -61,7 +61,7 @@ bool parseFile( std::vector<std::string> &files, const std::string &file, bool i
     return true;
 }
 
-bool parseArgs( bool &needFast, std::vector<std::string> &files, std::string &path, int argc, char **argv )
+bool parseArgs( std::vector<std::string> &files, std::string &path, int argc, char **argv )
 {
     if( argc < 2 )
     {
@@ -82,7 +82,7 @@ bool parseArgs( bool &needFast, std::vector<std::string> &files, std::string &pa
             return false;
         }
         ++curArgv;
-        Options::Instance().needFast = true;
+        CommonStorage::Instance().needFast = true;
         flag = argv[ 2 ];
     }
     if( argc == curArgv )
@@ -114,42 +114,33 @@ int main( int argc, char **argv )
 {
     std::vector<std::string> files;
     std::string path;
-    if( !parseArgs(Options::Instance().needFast, files, path, argc, argv))
+    if( !parseArgs(files, path, argc, argv))
     {
         usage();
         return 1;
     }
-    if( Options::Instance().needFast )
+    if( CommonStorage::Instance().needFast )
     {
         std::cout << "fast mode ON" << std::endl;
     }
 
-    ASTWalker walker;
-
+    std::vector<std::string> paths;
 #ifdef TEXT_DIAG
-    std::vector<std::string> paths = {
+    paths = {
             "/usr/include/",
             "/usr/include/c++/9/",
             "/usr/include/x86_64-linux-gnu/",
             "/usr/include/x86_64-linux-gnu/c++/9/",
             "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
-//            "/usr/lib/llvm-10/include/",
+            "/usr/lib/llvm-10/include/",
     };
-    walker.SetIncludeDirectories(paths);
-    Options::Instance().setIncludeDirs(paths);
+    CommonStorage::Instance().SetIncludeDirs(paths);
 #endif
+    ASTWalker walker(paths);
+
 
     std::cout << "Files for analyze: " << files.size() << std::endl;
-    for( const auto &file : files )
-    {
-//        std::cout << "Start analyze for " << file << std::endl;
-        if( !walker.WalkAST(file))
-        {
-            std::cerr << "Failed to analyze for file: " << file << std::endl;
-        }
-    }
-
-    std::cout << "---------------------------------------" << std::endl;
+    walker.WalkAST(files);
 
     AnalyzeProcess a;
     a.StartAnalyze();

@@ -1,6 +1,10 @@
-//
-// Created by alex on 10.05.2020.
-//
+/// @file AnalyzeProcess.cpp
+///
+/// @brief Класс для запуска анализатора на основе полученных состояний
+///
+/// @author alexust27
+/// Contact: ustinov1998s@gmail.com
+///
 
 #include "AnalyzeProcess.h"
 
@@ -20,6 +24,7 @@ AnalyzeProcess::AnalyzeProcess()
 
 void AnalyzeProcess::StartAnalyze()
 {
+    std::cout << "Start analyze." << std::endl;
     for( const auto &f : *allFunctions )
     {
         processFunction(f.second);
@@ -28,8 +33,8 @@ void AnalyzeProcess::StartAnalyze()
 
 void AnalyzeProcess::processFunction( Target::Function *function )
 {
-    auto name = function->getName();
-    if( processedFunctions.find(name) != processedFunctions.end())
+    auto funName = function->getName();
+    if( processedFunctions.find(funName) != processedFunctions.end())
     {
         // already in process
         return;
@@ -46,14 +51,14 @@ void AnalyzeProcess::processFunction( Target::Function *function )
         }
 
         // prevent recursion
-        if( name != calleeFun->first )
+        if( funName != calleeFun->first )
         {
             processFunction(calleeFun->second);
         }
     }
 
     // process
-    context = std::make_unique<ProcessContext>(name);
+    context = std::make_unique<ProcessContext>(funName);
 
     processCompound(function->startState());
 
@@ -62,8 +67,8 @@ void AnalyzeProcess::processFunction( Target::Function *function )
         context->fsm->SetReturnVarName(function->returnName);
     }
     context->fsm->ProcessReturnNone();
-
-    processedFunctions.insert(name);
+    processedFunctions.insert(funName);
+    context.reset();
 }
 
 void AnalyzeProcess::processStatement( Statement *stmt )
@@ -75,24 +80,9 @@ void AnalyzeProcess::processStatement( Statement *stmt )
             processCompound(dynamic_cast<CompoundStatement *>(stmt));
             break;
         }
-        case DELETE:
+        case VarAssigmentNew:
         {
-            processDelete(dynamic_cast<DeleteStatement *>(stmt));
-            break;
-        }
-        case IF:
-        {
-            processIF(dynamic_cast<IfStatement *>(stmt));
-            break;
-        }
-        case VarDeclFromFoo:
-        {
-            processVarDeclFromFoo(dynamic_cast<VarDeclFromFooStatement *>(stmt));
-            break;
-        }
-        case VarDeclNew:
-        {
-            processVarDeclNew(dynamic_cast<VarDeclNewStatement *>(stmt));
+            processVarAssigmentNew(dynamic_cast<VarAssigmentNewStatement *>(stmt));
             break;
         }
         case VarAssigmentFromFoo:
@@ -105,9 +95,14 @@ void AnalyzeProcess::processStatement( Statement *stmt )
             processVarAssigmentFromPointer(dynamic_cast<VarAssigmentFromPointerStatement *>(stmt));
             break;
         }
-        case VarAssigmentNew:
+        case DELETE:
         {
-            processVarAssigmentNew(dynamic_cast<VarAssigmentNewStatement *>(stmt));
+            processDelete(dynamic_cast<DeleteStatement *>(stmt));
+            break;
+        }
+        case IF:
+        {
+            processIF(dynamic_cast<IfStatement *>(stmt));
             break;
         }
         case Return:
@@ -123,6 +118,7 @@ void AnalyzeProcess::processStatement( Statement *stmt )
     }
 }
 
+
 void AnalyzeProcess::processCompound( Target::CompoundStatement *statement )
 {
     for( auto st : statement->getStates())
@@ -131,56 +127,54 @@ void AnalyzeProcess::processCompound( Target::CompoundStatement *statement )
     }
 }
 
-void AnalyzeProcess::processDelete( DeleteStatement *statement )
+void AnalyzeProcess::processVarAssigmentNew( VarAssigmentNewStatement *statement )
 {
-    auto cntIter = context->variables.find(statement->name);
-    VersionedVariable vv(statement->name, "unused", cntIter->second.meta, cntIter->second.count);
+    auto varName = statement->varName;
+    PtrCounter &lhsCnt = context->variables[ varName ];
+    ++(lhsCnt.count);
 
-    context->fsm->AddDeleteState(vv, statement->isArray);
-}
-
-void AnalyzeProcess::processIF( IfStatement *statement )
-{
-    // process then
-    // скорей всего в then находятся какие то простые действия, которые нам не интересны
-    // например присвоение констант или еще что то такое
-    if( statement->thenSt )
+    StateFSM state;
+    VersionedVariable vv(varName, statement->loc, VAR_POINTER, lhsCnt.count);
+    if( statement->isArray )
     {
-//        ctx.fsm->PushCondition(condStr);
-        StateFSM s;
-        context->fsm->AddStateToLeaves(s, context->fairPred, statement->condStr, false);
-        processStatement(statement->thenSt);
-//        ctx.fsm->PopCondition();
+        vv.MetaType(VAR_ARRAY_POINTER);
+        lhsCnt.meta = VAR_ARRAY_POINTER;
+        state.allocArrays.push_back(vv);
     }
-
-    // process else
-    // тоже самое, как для then, но есть еще случай, когда else вообще отсутствует
-    if( statement->elseSt )
+    else
     {
-//        ctx.fsm->PushCondition(elseStr);
-        StateFSM s;
-        context->fsm->AddStateToLeaves(s, context->branchPred, statement->elseStr, true);
-        processStatement(statement->elseSt);
-//        ctx.fsm->PopCondition();
+        lhsCnt.meta = VAR_POINTER;
+        state.allocPointers.push_back(vv);
     }
+    //Отметить new.
+    context->allocated.push_back(vv);
+
+    std::shared_ptr<VariableSMT> vvFormulae(new VariableSMT(vv));
+    state.formulae.push_back(vvFormulae);
+
+    context->fsm->AddStateToLeaves(state, context->fairPred);
 }
 
 void AnalyzeProcess::processVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement )
 {
     PtrCounter &lhsCnt = context->variables[ statement->varName ];
-    ++(lhsCnt.count);
 
     if( allocatedFunctions.find(statement->fooName) !=
         allocatedFunctions.end())
     {
+        ++(lhsCnt.count);
         StateFSM state;
         VersionedVariable vv(statement->varName, statement->loc, VAR_POINTER, lhsCnt.count);
         {
+            // TODO: поддержать как царь разные варианты для массива и просто указателя
             state.allocPointers.push_back(vv);
             lhsCnt.meta = VAR_POINTER;
         }
+//        if( statement->isDecl )
+//        {
         //Отметить new.
         context->allocated.push_back(vv);
+//        }
 
         std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
         state.formulae.push_back(vvForm);
@@ -218,66 +212,41 @@ void AnalyzeProcess::processVarAssigmentFromPointer( VarAssigmentFromPointerStat
     context->fsm->AddStateToLeaves(state, context->fairPred);
 }
 
-void AnalyzeProcess::processVarAssigmentNew( VarAssigmentNewStatement *statement )
+
+void AnalyzeProcess::processDelete( DeleteStatement *statement )
 {
-    auto varName = statement->varName;
-    PtrCounter &lhsCnt = context->variables[ varName ];
-    ++(lhsCnt.count);
+    auto cntIter = context->variables.find(statement->name);
+    VersionedVariable vv(statement->name, "unused", cntIter->second.meta, cntIter->second.count);
 
-    StateFSM state;
-    VersionedVariable vv(varName, statement->loc, VAR_POINTER, lhsCnt.count);
-    if( statement->isArray )
-    {
-        vv.MetaType(VAR_ARRAY_POINTER);
-        state.allocArrays.push_back(vv);
-        lhsCnt.meta = VAR_ARRAY_POINTER;
-    }
-    else
-    {
-        state.allocPointers.push_back(vv);
-        lhsCnt.meta = VAR_POINTER;
-    }
-    //Отметить new.
-    context->allocated.push_back(vv);
-
-    std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
-    state.formulae.push_back(vvForm);
-
-    context->fsm->AddStateToLeaves(state, context->fairPred);
+    context->fsm->AddDeleteState(vv, statement->isArray);
 }
 
-void AnalyzeProcess::processVarDeclNew( VarDeclNewStatement *statement )
+void AnalyzeProcess::processIF( IfStatement *statement )
 {
-    auto varName = statement->varName;
-    PtrCounter ptrCnt = {
-            0,
-            VAR_POINTER
-    };
-    //variables[name] = ptrCnt;
-    auto cntIter = context->variables.insert({varName, ptrCnt});
-
-    ++cntIter.first->second.count;
-
-    StateFSM state;
-    VersionedVariable vv(varName, statement->loc, VAR_POINTER, 1);
-
-    if( statement->isArray ) //Declaration of array
+    // process then
+    // скорей всего в then находятся какие то простые действия, которые нам не интересны
+    // например присвоение констант или еще что то такое
+    if( statement->thenSt )
     {
-        vv.MetaType(VAR_ARRAY_POINTER);
-        cntIter.first->second.meta = VAR_ARRAY_POINTER;
-        state.allocArrays.push_back(vv);
+//        ctx.fsm->PushCondition(condStr);
+        StateFSM s;
+        context->fsm->AddStateToLeaves(s, context->fairPred, statement->condStr, false);
+        processStatement(statement->thenSt);
+//        ctx.fsm->PopCondition();
     }
-    else
+
+    // process else
+    // тоже самое, как для then, но есть еще случай, когда else вообще отсутствует
+    if( statement->elseSt )
     {
-        state.allocPointers.push_back(vv);
+//        ctx.fsm->PushCondition(elseStr);
+        StateFSM s;
+        context->fsm->AddStateToLeaves(s, context->branchPred, statement->elseStr, true);
+        processStatement(statement->elseSt);
+//        ctx.fsm->PopCondition();
     }
-    context->allocated.push_back(vv);
-
-    std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
-    state.formulae.push_back(vvForm);
-
-    context->fsm->AddStateToLeaves(state, context->fairPred);
 }
+
 
 void AnalyzeProcess::processReturn( ReturnStatement *statement )
 {
@@ -299,31 +268,5 @@ void AnalyzeProcess::processReturn( ReturnStatement *statement )
     context->fsm->ClearReturnVarName();
 }
 
-void AnalyzeProcess::processVarDeclFromFoo( VarDeclFromFooStatement *statement )
-{
-    PtrCounter ptrCnt = {
-            0,
-            VAR_POINTER
-    };
-    //variables[name] = ptrCnt;
-    auto cntIter = context->variables.insert({statement->varName, ptrCnt});
 
-    if( allocatedFunctions.find(statement->fooName) !=
-        allocatedFunctions.end())
-    {
 
-        ++cntIter.first->second.count;
-
-        // TODO: поддержать как царь разные варианты для массива и просто указателя
-        StateFSM state;
-        VersionedVariable vv(statement->varName, statement->loc, VAR_POINTER, 1);
-        {
-            state.allocPointers.push_back(vv);
-        }
-        //Отметить функцию как new.
-        std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
-        state.formulae.push_back(vvForm);
-
-        context->fsm->AddStateToLeaves(state, context->fairPred);
-    }
-}

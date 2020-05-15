@@ -29,6 +29,13 @@ public:
     /// @brief Метод добавляет к последнему составному состоянию в стеке вложеное состояние
     void addToLast( Statement *s );
 
+    /// @brief Метод добавляет к контексту имя функции которая может освобождать ресурсы
+    void AddFreeFunction( const std::string &function );
+
+    /// @brief Метод проверяет может ли функция освобождать ресурсы
+    bool IsFreeFunction( const std::string &function );
+
+    /// @brief Метод возвращает указатель на мап со всеми функциями
     std::map<std::string, Target::Function *> *getAllFunction();
 
 private:
@@ -38,8 +45,10 @@ private:
     /// @brief Стек с составными состояниями
     std::vector<CompoundStatement *> compoundStatementsStack;
 
-    /// @brief все фукнции которые будут проанализированы
+    /// @brief Все фукнции, сохраненные для анализа
     std::map<std::string, Target::Function *> allFunctions;
 
+    /// @brief Фукнции, которые могут освобождать ресурсы
+    std::set<std::string> freeFunctions;
 };
 }

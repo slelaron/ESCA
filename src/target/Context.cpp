@@ -11,6 +11,12 @@ namespace Target
 Context::Context()
 {
     curFunction = nullptr;
+    freeFunctions.insert("free");
+    freeFunctions.insert("close");
+    freeFunctions.insert("fclose");
+#ifdef _WIN32
+    freeFunctions.insert("closesoket");
+#endif
 }
 
 void Context::AddFunction( const std::string &name )
@@ -62,6 +68,16 @@ Context &Context::Instance()
 std::map<std::string, Target::Function *> *Context::getAllFunction()
 {
     return &allFunctions;
+}
+
+void Context::AddFreeFunction( const std::string &function )
+{
+    freeFunctions.insert(function);
+}
+
+bool Context::IsFreeFunction( const std::string &function )
+{
+    return freeFunctions.count(function);
 }
 
 

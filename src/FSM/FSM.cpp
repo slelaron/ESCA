@@ -52,7 +52,7 @@ FSM::~FSM()
     StatesStorage().swap(states);
     TransitionsStorage().swap(transitions);
     events.clear();
-    iSat = 0;
+//    iSat = 0;
     std::string().swap(functionName);
 //    CreateStart();
 }
@@ -205,7 +205,7 @@ void FSM::AddAllocPointer( const VersionedVariable &ap )
 }
 
 void FSM::HandleDeletePtr( const VersionedVariable &v, std::vector<VersionedVariable> &alloc,
-                           std::vector<VersionedVariable> &del, StateFSM &delState )
+                           std::vector<VersionedVariable> &del, StateFSM &delState ) const
 {
     //write formulae.
     int size = alloc.size();

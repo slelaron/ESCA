@@ -1,6 +1,5 @@
 #include <iostream>
-#include <utility>
-
+#include <filesystem>
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
 
@@ -16,23 +15,29 @@ const std::vector<std::string> INCLUDE_PATHS = {
 
 int main()
 {
-    const std::string RESOURCE_PATH = "/home/alex/CLionProjects/ESCA/tests/examples/";
+    const std::string RESOURCE_PATH = std::filesystem::current_path().string() + "/examples/";
     std::vector<std::string> files = {
             "test2.cpp",
     };
-    ASTWalker walker;
-    Options::Instance().setIncludeDirs(INCLUDE_PATHS);
-    walker.SetIncludeDirectories(INCLUDE_PATHS);
+    std::cout << RESOURCE_PATH << std::endl;
+
+//    freopen("analyze.info", "w", stdout);
+
+    ASTWalker walker(INCLUDE_PATHS);
+    CommonStorage::Instance().SetIncludeDirs(INCLUDE_PATHS);
+//    walker.SetIncludeDirectories(INCLUDE_PATHS);
     for( const auto &file: files )
     {
         if( !walker.WalkAST(RESOURCE_PATH + file))
         {
-            std::cerr << "Failed to analyze for file: " << file << std::endl;
+            std::cerr << "Failed to walk for file: " << file << std::endl;
         }
-        std::cout << "finish to analyze file: " << file << std::endl;
+        std::cout << "Finish walk file: " << file << std::endl;
     }
 
     AnalyzeProcess a;
     a.StartAnalyze();
+
+    std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
     return 0;
 }

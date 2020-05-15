@@ -1,7 +1,10 @@
-//
-// Created by alex on 10.05.2020.
-//
-
+/// @file AnalyzeProcess.h
+///
+/// @brief Класс для запуска анализатора на основе наших состояний
+///
+/// @author alexust27
+/// Contact: ustinov1998s@gmail.com
+///
 #ifndef ESCA_PROCESSCTX_H
 #define ESCA_PROCESSCTX_H
 
@@ -26,21 +29,17 @@ private:
 
     void processCompound( Target::CompoundStatement *statement );
 
-    void processDelete( DeleteStatement *statement );
-
-    void processIF( IfStatement *statement );
-
     void processVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement );
 
     void processVarAssigmentFromPointer( VarAssigmentFromPointerStatement *statement );
 
     void processVarAssigmentNew( VarAssigmentNewStatement *statement );
 
-    void processVarDeclNew( VarDeclNewStatement *statement );
+    void processDelete( DeleteStatement *statement );
+
+    void processIF( IfStatement *statement );
 
     void processReturn( ReturnStatement *statement );
-
-    void processVarDeclFromFoo( VarDeclFromFooStatement *statement );
 
 
 private:
@@ -48,12 +47,13 @@ private:
     /// @brief Множество проанализированных функций
     std::set<std::string> processedFunctions;
 
-    /// @brief множество функции которые возвращают указатель на выделенную память
+    /// @brief Множество функции которые возвращают указатель на выделенную память
     std::set<std::string> allocatedFunctions;
 
     /// @brief Указатель на все функции
     std::map<std::string, Function *> *allFunctions;
 
+    /// @brief Уникальный контекст для одной функции
     std::unique_ptr<ProcessContext> context;
 };
 
