@@ -7,29 +7,31 @@ class Function
 public:
     Function() = delete;
 
-    explicit Function( const std::string &name ) : name(name), statement(nullptr)
+    explicit Function( const std::string &name ) : name(name), statement(nullptr), isThrowable(false)
     {
     }
 
     /// @brief Создает начальное состояние функции
-    void makeStart( CompoundStatement *startState )
+    void MakeStart( CompoundStatement *startState )
     {
         if( statement )
         {
-            throw std::runtime_error("Function already has start statement");
+            throw std::logic_error("Function already has start statement");
         }
         statement = startState;
     }
 
     /// @brief Возвращает начальное состояние функции
-    CompoundStatement *const startState() const
+    CompoundStatement *const StartState() const
     {
         if( !statement )
         {
-            throw std::runtime_error("Function hasn't had start statement yet");
+            throw std::logic_error("Function hasn't had start statement yet");
         }
         return statement;
     }
+
+    bool isThrowable;
 
     /// @brief Имена функций которые вызываются внутри функции
     std::vector<std::string> callee;

@@ -7,6 +7,7 @@
 #include "utils/common.h"
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
+#include "utils/DefectStorage.h"
 
 
 void usage()
@@ -144,6 +145,8 @@ int main( int argc, char **argv )
 
     AnalyzeProcess a;
     a.StartAnalyze();
+
+    DefectStorage::Instance().PrintDefects();
 
     std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
 

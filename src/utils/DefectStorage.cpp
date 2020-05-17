@@ -1,31 +1,50 @@
 #include <fstream>
+#include <llvm/Support/raw_ostream.h>
 
 #include "DefectStorage.h"
 
 using namespace std;
 
-DefectStorage& DefectStorage::Instance()
+DefectStorage &DefectStorage::Instance()
 {
-	static DefectStorage instance;
-	return instance;
+    static DefectStorage instance;
+    return instance;
 }
 
-void DefectStorage::SaveDefects()
+void DefectStorage::AddDefect( const string &var, const string &location )
 {
-	if (outputPath.empty())
-	{
-		return;
-	}
+    if( !defectsLocations.count(location))
+    {
+        defectsLocations.insert(location);
+        defects.push_back({var, location});
+    }
+}
 
-	ofstream outf(outputPath);
-	if (!outf.good())
-	{
-		return;
-	}
-
-    for (const auto& defect : defects) {
-        outf << defect << endl;
+void DefectStorage::PrintDefects( const std::string &outputFile )
+{
+    if( outputFile.empty())
+    {
+        for( const auto &defect : defects )
+        {
+            llvm::errs() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LEAK~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+            llvm::errs() << "Location: " << defect.location << "\n";
+            llvm::errs() << "variable name: " << defect.varName << "\n";
+        }
+        llvm::errs() << "Found " << defects.size() << " leaks\n";
+        return;
     }
 
-	outf.close();
+    ofstream outf(outputFile);
+    if( !outf.good())
+    {
+        llvm::errs() << "Wrong output path: " << outputFile;
+        return;
+    }
+
+    for( const auto &defect : defects )
+    {
+        outf << "Memory leak. Variable name: " << defect.varName << " Location: " << defect.location << "\n";
+    }
+    outf << "Found " << defects.size() << " leaks\n";
+    outf.close();
 }

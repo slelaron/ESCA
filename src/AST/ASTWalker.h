@@ -2,6 +2,7 @@
 #define ASTWalker_h
 
 
+#include <clang/Lex/HeaderSearchOptions.h>
 #include <clang/AST/Stmt.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
 #include <clang/Frontend/CompilerInstance.h>

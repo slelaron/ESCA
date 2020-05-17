@@ -17,11 +17,14 @@ std::string FormulaeToString( const FormulaStorage &formulae );
 std::string FormulaeToStringSat( const FormulaStorage &formulae );
 
 /// @brief Одно из состояний автомата (одна операция)
-class StateFSM
+struct StateFSM
 {
-public:
     FSMID id = -1;
+
+    /// @brief Входящие ребра, по которым можно прийти в это состояние
     std::vector<FSMID> incoming;
+
+    /// @brief Исходящие ребра, по которым можно пройти из этого состояния
     std::vector<FSMID> outgoing;
 
     VarStorage allocPointers;
@@ -29,7 +32,7 @@ public:
     VarStorage delPointers;
     VarStorage delArrays;
 
-    /// Хранилище формул, которые в дальнейшем будет передана в smt решатель
+    /// Хранилище формул, которые в дальнейшем будут переданы в smt решатель
     FormulaStorage formulae;
 
     bool isEnd = false;

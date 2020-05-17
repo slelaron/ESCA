@@ -2,7 +2,7 @@
 
 namespace Target
 {
-/// @class Контекст для одной функции, хранящий автомат операций
+/// @class Контекст для одной функции, хранит автомат операций
 class ProcessContext
 {
 public:
@@ -14,7 +14,7 @@ public:
     std::map<std::string, PtrCounter> variables;
 
     /// @brief Вектор аллоцированных переменных
-    std::vector<VersionedVariable> allocated;
+    std::vector<VersionedVariable> allocatedVars;
 
     /// @brief Автомат который хранит все операции(состояния) функции
     std::unique_ptr<FSM> fsm;

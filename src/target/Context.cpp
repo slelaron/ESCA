@@ -26,30 +26,40 @@ void Context::AddFunction( const std::string &name )
     allFunctions[ name ] = curFunction;
 }
 
-void Context::addToLast( Statement *s )
+void Context::AddToLast( Statement *s )
 {
-    //if (isIf) {
-    //    isIf = false;
-    //    nextInIf = s;
-    //}
+    if( isInIf )
+    {
+        assert(!ifStatementsStack.empty());
+        if( onThen )
+        {
+            ifStatementsStack.back().second->thenSt->addState(s);
+        }
+        else
+        {
+            ifStatementsStack.back().second->elseSt->addState(s);
+        }
+        return;
+    }
     assert(!compoundStatementsStack.empty());
     compoundStatementsStack.back()->addState(s);
 }
 
-void Context::createCompoundStatement( bool addToStates )
+CompoundStatement *Context::createCompoundStatement( bool addToStates )
 {
     auto s = new CompoundStatement();
     if( compoundStatementsStack.empty())
     {
         // начало функции
-        curFunction->makeStart(s);
+        curFunction->MakeStart(s);
     }
 
     if( !compoundStatementsStack.empty() && addToStates )
     {
-        addToLast(s);
+        AddToLast(s);
     }
     compoundStatementsStack.push_back(s);
+    return s;
 }
 
 
@@ -80,6 +90,42 @@ bool Context::IsFreeFunction( const std::string &function )
     return freeFunctions.count(function);
 }
 
+IfStatement *Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
+{
+    auto thenSt = new CompoundStatement();
+    auto elseSt = hasElse ? new CompoundStatement() : nullptr;
+    auto ifSt = new IfStatement(thenSt, elseSt, cond, elseCond);
+    AddToLast(ifSt);
+    isInIf = true;
+    onThen = true;
+    ifStatementsStack.emplace_back(onThen, ifSt);
+    return ifSt;
+}
+
+void Context::SwitchToElse()
+{
+    if( !onThen || ifStatementsStack.back().second->elseSt == nullptr )
+    {
+        throw std::logic_error("Else is empty, or you need go on then first");
+    }
+    onThen = false;
+    ifStatementsStack.back().first = onThen;
+}
+
+void Context::PopIfStatement()
+{
+    assert(!ifStatementsStack.empty());
+    ifStatementsStack.pop_back();
+    if( ifStatementsStack.empty())
+    {
+        isInIf = false;
+    }
+    else
+    {
+        onThen = ifStatementsStack.back().first;
+    }
+}
+
 
 
 //Function *Context::getLastFunction() const
@@ -99,33 +145,10 @@ bool Context::IsFreeFunction( const std::string &function )
 //        //if (stackSt.size() > 1) {
 //        //    stackSt[stackSt.size() - 2]->addState(stackSt.back());
 //        //}
-//        //addToLast(stackSt.back());
+//        //AddToLast(stackSt.back());
 //    }
 
-//    Statement **nextInIf = nullptr;
-//    bool isIf = false;
 //
-//    void setIf( Statement *s )
-//    {
 //
-//        if( nextInIf )
-//        {
-//            *nextInIf = s;
-//            nextInIf = nullptr;
-//        }
-//    }
-//
-//    void startIfSt( Statement **s )
-//    {
-//        nextInIf = s;
-//        isIf = true;
-//    }
-
-//Statement* getAfterIfStatement() {
-//    auto tmp = nextInIf;
-//    nextInIf = nullptr;
-//    isIf = false;
-//    return tmp;
-//}
 
 }

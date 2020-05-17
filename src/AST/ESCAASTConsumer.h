@@ -28,21 +28,18 @@ public:
                 return true;
             }
             CommonStorage::Instance().AddAnalyzeFile(loc);
-            std::cout << loc << std::endl;
+//            std::cout << loc << std::endl;
 
 //            if( loc.find(Options::Instance().analyzeFile) == std::string::npos )
 //            {
 //                return true;
 //            }
-//            it->dump();
+
+            // Traverse the declaration using our AST visitor.
             visitor.TraverseDecl(it);
 
-//            it->getLocation().printToString()
-//            it->dump();
-            // Traverse the declaration using our AST visitor.
         }
 
-//        std::cout << "heeerrrree" << std::endl;
         return true;
     }
 

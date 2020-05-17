@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include "../target/Context.h"
+#include <z3++.h>
 
 #include "ESCAASTVisitor.h"
 
@@ -29,6 +30,7 @@ std::string ESCAASTVisitor::getLocation( const clang::Stmt *st )
 
 bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 {
+    astContext = &f->getASTContext();
     std::string funName = f->getNameInfo().getName().getAsString();
 
     ////////////
@@ -82,7 +84,9 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 
         // lazy
         //ProcessReturnNone();
-        variables.clear();
+        allVariables.clear();
+//        localVariables.clear();
+        variableToExpr.clear();
     }
 
     return true;
@@ -199,6 +203,26 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
     return true;
 }
 
+bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToStates )
+{
+    auto saveVars = allVariables;
+
+    Target::Context::Instance().createCompoundStatement(addToStates);
+
+//    Target::Context::Instance().setIf(state);
+//    body->dump();
+    for( auto iter = body->body_begin(); iter != body->body_end(); ++iter )
+    {
+        ProcessStmt(*iter, addToStates);
+    }
+
+    allVariables = saveVars; // удаляем локальные переменные
+
+    Target::Context::Instance().popCompound();
+
+    return true;
+}
+
 bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
 {
     using namespace clang;
@@ -240,26 +264,10 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
 //                    fooName = staticFuncMapping[ fooName ];
 //                }
 
-                Target::Context::Instance().addToLast(new Target::DeleteStatement(varName, false));
+                Target::Context::Instance().AddToLast(new Target::DeleteStatement(varName, false));
             }
         }
     }
-    return true;
-}
-
-bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToStates )
-{
-    Target::Context::Instance().createCompoundStatement(addToStates);
-
-//    Target::Context::Instance().setIf(state);
-
-    for( auto iter = body->body_begin(); iter != body->body_end(); ++iter )
-    {
-        ProcessStmt(*iter);
-    }
-
-    Target::Context::Instance().popCompound();
-
     return true;
 }
 
@@ -272,7 +280,7 @@ void ESCAASTVisitor::AddVarDeclFromFoo( const std::string &varName, std::string 
     }
 
     Target::Context::Instance().curFunction->callee.push_back(fooName);
-    Target::Context::Instance().addToLast(
+    Target::Context::Instance().AddToLast(
             new Target::VarAssigmentFromFooStatement(varName, fooName, location, isDecl));
 }
 
@@ -284,7 +292,7 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     // пример: x = new int[10]
     if( auto newOp = dyn_cast<CXXNewExpr>(init))
     {
-        Target::Context::Instance().addToLast(
+        Target::Context::Instance().AddToLast(
                 new Target::VarAssigmentNewStatement(lhsName, newOp->isArray(), getLocation(newOp), isDecl));
         return true;
     }
@@ -307,7 +315,7 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     {
         std::string rhsPointerName = rhsPointer->getNameInfo().getName().getAsString();
 
-        Target::Context::Instance().addToLast(
+        Target::Context::Instance().AddToLast(
                 new Target::VarAssigmentFromPointerStatement(lhsName, rhsPointerName, getLocation(rhsPointer), isDecl));
     }
     // для функций
@@ -342,29 +350,49 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
 
 }
 
+bool ESCAASTVisitor::EvaluateBool( const clang::Stmt *init, bool &res )
+{
+    return true;
+}
+
 bool ESCAASTVisitor::ProcessDeclaration( clang::VarDecl *vd )
 {
     using namespace clang;
-
-    if( !vd->getType()->isAnyPointerType() && !vd->getType()->isIntegerType())
-    {
-        return true;
-    }
-
-    auto varName = vd->getNameAsString();
-    if( variables.find(varName) != variables.end())
-    {
-        //Error: this variable is already declared.
-        Cout << "Variable with name " << varName << " declared twice\n";
-        return true;
-    }
-    variables.insert(varName);
-
-    const Stmt *init = vd->getAnyInitializer();
+    auto init = vd->getAnyInitializer();
     if( init == nullptr )
     {
         return true;
     }
+    auto varName = vd->getNameAsString();
+    if( vd->getType()->isBooleanType())
+    {
+        bool res;
+        if( init->isEvaluatable(vd->getASTContext()))
+        {
+            init->EvaluateAsBooleanCondition(res, *astContext);
+//            z3::expr x = ;
+            variableToExpr[ varName ] = res;
+        }
+        else
+        {
+            if( EvaluateBool(init, res))
+            {
+//                z3::expr x = z3contex.bool_val(res);
+//                variableToExpr[ varName ] = x;
+            }
+
+        }
+        return true;
+    }
+
+    while( allVariables.find(varName) != allVariables.end())
+    {
+        //   varName += "_";
+        Cout << "Variable with name " << varName << " declared twice\n";
+        return true;
+    }
+    allVariables.insert(varName);
+
 
     return ProcessAssignment(init, varName, true);
 }
@@ -386,7 +414,7 @@ bool ESCAASTVisitor::ProcessBinOp( clang::BinaryOperator *binop )
     }
     else
     {
-        lhs->dump();
+//        lhs->dump();
         return false;
     }
 
@@ -398,19 +426,16 @@ bool ESCAASTVisitor::ProcessBinOp( clang::BinaryOperator *binop )
 bool ESCAASTVisitor::ProcessDelete( clang::CXXDeleteExpr *del )
 {
     using namespace clang;
-
+//    del->dump();
     auto argDel = del->getArgument();
     //TODO: change this if by function that gives a full name of pointer or null when there is no pointer.
-    if( isa<ImplicitCastExpr>(argDel))
+    if( auto delCast = dyn_cast<ImplicitCastExpr>(argDel))
     {
-        auto delCast = cast<ImplicitCastExpr>(argDel);
-        auto dexpr = delCast->getSubExpr();
-        if( isa<DeclRefExpr>(dexpr))
+        if( auto delPtr = dyn_cast<DeclRefExpr>(delCast->getSubExpr()))
         {
-            auto dptr = cast<DeclRefExpr>(dexpr);
-            std::string name = dptr->getNameInfo().getAsString();
+            std::string varName = delPtr->getNameInfo().getAsString();
 
-            Target::Context::Instance().addToLast(new Target::DeleteStatement(name, del->isArrayForm()));
+            Target::Context::Instance().AddToLast(new Target::DeleteStatement(varName, del->isArrayForm()));
         }
     }
     return true;
@@ -431,23 +456,19 @@ bool ESCAASTVisitor::ProcessReturn( clang::ReturnStmt *ret )
     {
         auto ice = cast<ImplicitCastExpr>(retVal);
         Stmt *subexpr = ice->getSubExpr();
-        if( isa<DeclRefExpr>(subexpr)) //pointer
+        if( auto ref = dyn_cast<DeclRefExpr>(subexpr)) //pointer
         {
-            auto ref = cast<DeclRefExpr>(subexpr);
-            DeclarationNameInfo nameInfo = ref->getNameInfo();
-            DeclarationName name = nameInfo.getName();
-            //name.dump();
-            std::string sname = name.getAsString();
+            std::string retName = ref->getNameInfo().getName().getAsString();
 
-            Target::Context::Instance().curFunction->returnName.insert(sname);
+            Target::Context::Instance().curFunction->returnName.insert(retName);
 
-            returnVarName2 = sname;
+            returnVarName2 = retName;
         }
     }
 
-    Target::Context::Instance().addToLast(new Target::ReturnStatement(returnVarName2));
+    Target::Context::Instance().AddToLast(new Target::ReturnStatement(returnVarName2));
 
-    return /*res*/true;
+    return true;
 }
 
 bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
@@ -455,33 +476,34 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     Cout << "If statement!\n";
 //    ifstmt->dump();
     auto cond = ifstmt->getCond();
-    {
-        auto curCond = cond;
-        if( auto c = clang::dyn_cast<clang::UnaryOperator>(curCond))
-        {
-            curCond = c->getSubExpr();
-        }
-
-        if( auto castSt = clang::dyn_cast<clang::CastExpr>(curCond))
-        {
-            auto sub4 = castSt->getSubExpr();
-            if( auto castSt3 = clang::dyn_cast<clang::CastExpr>(sub4))
-            {
-                auto sub3 = castSt3->getSubExpr();
-                if( auto parenSt = clang::dyn_cast<clang::ParenExpr>(sub3))
-                {
-                    auto sub = parenSt->getSubExpr();
-                    if( auto bo = clang::dyn_cast<clang::BinaryOperator>(sub))
-                    {
-                        if( bo->isAssignmentOp())
-                        {
-                            ProcessBinOp(bo);
-                        }
-                    }
-                }
-            }
-        }
-    }
+//    cond->dump();
+//    {
+//        auto curCond = cond;
+//        if( auto c = clang::dyn_cast<clang::UnaryOperator>(curCond))
+//        {
+//            curCond = c->getSubExpr();
+//        }
+//
+//        if( auto castSt = clang::dyn_cast<clang::CastExpr>(curCond))
+//        {
+//            auto sub4 = castSt->getSubExpr();
+//            if( auto castSt3 = clang::dyn_cast<clang::CastExpr>(sub4))
+//            {
+//                auto sub3 = castSt3->getSubExpr();
+//                if( auto parenSt = clang::dyn_cast<clang::ParenExpr>(sub3))
+//                {
+//                    auto sub = parenSt->getSubExpr();
+//                    if( auto bo = clang::dyn_cast<clang::BinaryOperator>(sub))
+//                    {
+//                        if( bo->isAssignmentOp())
+//                        {
+//                            ProcessBinOp(bo);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
     std::string typeS;
     llvm::raw_string_ostream lso(typeS);
     clang::LangOptions langOpts;
@@ -490,24 +512,24 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     cond->printPretty(lso, nullptr, pol);
     std::string condStr = "~if - " + lso.str();
     std::string elseStr = "~else - " + condStr;
-    Cout << "\tCondition: " << condStr << "\n";
+//    std::cout << "\tCondition: " << condStr << "\n";
+    if( cond->isEvaluatable(*astContext))
+    {
+//        std::cout << ""
+    }
 
-    //TODO: Create the state branching.
-    Target::Statement *thenSt = nullptr;
-//    Target::Context::Instance().startIfSt(&thenSt);
 
-    // почему-то не заходим в then и в else,
-    // видимо для скорости
+    Target::Context::Instance().CreateIfStatement(ifstmt->hasElseStorage(), condStr, elseStr);
+
     ProcessStmt(ifstmt->getThen(), false);
 
-    Target::Statement *elseSt = nullptr;
-//    Target::Context::Instance().startIfSt(&elseSt);
     if( ifstmt->hasElseStorage())
     {
+        Target::Context::Instance().SwitchToElse();
         ProcessStmt(ifstmt->getElse(), false);
     }
 
-    Target::Context::Instance().addToLast(new Target::IfStatement(thenSt, elseSt, condStr, elseStr));
+    Target::Context::Instance().PopIfStatement();
 
     return true;
 }

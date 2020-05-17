@@ -9,6 +9,7 @@ target_link_libraries(run_tests
         target
         fsm
         smt
+        z3
         clangAST
         clangLex
         clangBasic

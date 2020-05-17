@@ -105,7 +105,6 @@ void ASTWalker::makeContext()
 
 bool ASTWalker::WalkAST( const std::string &fileName )
 {
-
     llvm::ErrorOr<const clang::FileEntry *> pFile = fileManager->getFile(fileName);
     if( !pFile )
     {
@@ -151,14 +150,6 @@ void ASTWalker::SetIncludeDirectories( const std::vector<std::string> &paths )
 
 #endif
 
-#ifdef DEBUG
-
-void ASTWalker::DumpStmt( clang::Stmt *s )
-{
-    s->dump(llvm::errs(), astContext->getSourceManager());
-    s->dump();
-}
-
 void ASTWalker::WalkAST( const std::vector<std::string> &files )
 {
     for( const auto &file : files )
@@ -172,6 +163,14 @@ void ASTWalker::WalkAST( const std::vector<std::string> &files )
     }
     std::cout << "End walk." << std::endl;
     std::cout << "---------------------------------------" << std::endl;
+}
+
+#ifdef DEBUG
+
+void ASTWalker::DumpStmt( clang::Stmt *s )
+{
+    s->dump(llvm::errs(), astContext->getSourceManager());
+    s->dump();
 }
 
 #endif

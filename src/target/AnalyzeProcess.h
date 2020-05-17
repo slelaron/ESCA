@@ -23,23 +23,23 @@ public:
 
 private:
 
-    void processFunction( Target::Function *function );
+    void ProcessFunction( Target::Function *function );
 
-    void processStatement( Statement *stmt );
+    void ProcessStatement( Statement *stmt );
 
-    void processCompound( Target::CompoundStatement *statement );
+    void ProcessCompound( Target::CompoundStatement *statement );
 
-    void processVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement );
+    void ProcessVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement );
 
-    void processVarAssigmentFromPointer( VarAssigmentFromPointerStatement *statement );
+    void ProcessVarAssigmentFromPointer( VarAssigmentFromPointerStatement *statement );
 
-    void processVarAssigmentNew( VarAssigmentNewStatement *statement );
+    void ProcessVarAssigmentNew( VarAssigmentNewStatement *statement );
 
-    void processDelete( DeleteStatement *statement );
+    void ProcessDelete( DeleteStatement *statement );
 
-    void processIF( IfStatement *statement );
+    void ProcessIF( IfStatement *statement );
 
-    void processReturn( ReturnStatement *statement );
+    void ProcessReturn( ReturnStatement *statement );
 
 
 private:
@@ -54,7 +54,7 @@ private:
     std::map<std::string, Function *> *allFunctions;
 
     /// @brief Уникальный контекст для одной функции
-    std::unique_ptr<ProcessContext> context;
+    std::unique_ptr<ProcessContext> processContext;
 };
 
 

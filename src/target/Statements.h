@@ -129,7 +129,7 @@ public:
 class IfStatement : public Statement
 {
 public:
-    IfStatement( Target::Statement *thenSt, Target::Statement *elseSt, const std::string &condStr,
+    IfStatement( Target::CompoundStatement *thenSt, Target::CompoundStatement *elseSt, const std::string &condStr,
                  const std::string &elseStr );
 
     STATEMENTS GetType() override
@@ -137,8 +137,8 @@ public:
         return STATEMENTS::IF;
     }
 
-    Statement *thenSt = nullptr;
-    Statement *elseSt = nullptr;
+    CompoundStatement *thenSt = nullptr;
+    CompoundStatement *elseSt = nullptr;
     std::string condStr;
     std::string elseStr;
 };

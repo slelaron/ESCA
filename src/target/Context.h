@@ -21,13 +21,13 @@ public:
     void AddFunction( const std::string &name );
 
     /// @brief Метод создает составное состояние и добавляет его на вершину стэка
-    void createCompoundStatement( bool addToStates = true );
+    CompoundStatement *createCompoundStatement( bool addToStates = true );
 
     /// @brief Метод удаляет последнее составное состояние со стека
     void popCompound();
 
     /// @brief Метод добавляет к последнему составному состоянию в стеке вложеное состояние
-    void addToLast( Statement *s );
+    void AddToLast( Statement *s );
 
     /// @brief Метод добавляет к контексту имя функции которая может освобождать ресурсы
     void AddFreeFunction( const std::string &function );
@@ -38,9 +38,20 @@ public:
     /// @brief Метод возвращает указатель на мап со всеми функциями
     std::map<std::string, Target::Function *> *getAllFunction();
 
-private:
+    IfStatement *CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
 
+    void PopIfStatement();
+
+    void SwitchToElse();
+
+private:
     Context();
+
+    bool onThen = true;
+    bool isInIf = false;
+
+    /// @brief Стек с условными состояниями (onThen, ifStatement)
+    std::vector<std::pair<bool, IfStatement *>> ifStatementsStack;
 
     /// @brief Стек с составными состояниями
     std::vector<CompoundStatement *> compoundStatementsStack;
@@ -50,5 +61,6 @@ private:
 
     /// @brief Фукнции, которые могут освобождать ресурсы
     std::set<std::string> freeFunctions;
+
 };
 }

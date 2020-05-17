@@ -4,6 +4,7 @@
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
+#include <z3++.h>
 
 
 /// @class Класс, который выполняет предварительный обход всего Clang AST дерева и посещает каждый узел.
@@ -52,15 +53,6 @@ private:
 
 
 private:
-
-    /// @brief Менеджер для получения строки в текущей функции
-    clang::SourceManager *currSM = nullptr;
-
-    std::map<std::string, std::string> staticFuncMapping;
-
-    /// @brief Хранилище переменных
-    std::set<std::string> variables;
-
     void
     AddVarDeclFromFoo( const std::string &varName, std::string &fooName, const std::string &location, bool isDecl );
 
@@ -69,6 +61,24 @@ private:
     /// @param lhsName - имя алоцируемой переменной
     /// @param isDecl - проделорирована ли переменная
     bool ProcessAssignment( const clang::Stmt *init, const std::string &lhsName, bool isDecl );
+
+    bool EvaluateBool( const clang::Stmt *init, bool &res );
+
+    clang::ASTContext *astContext;
+    /// @brief Менеджер для получения строки в текущей функции
+    clang::SourceManager *currSM = nullptr;
+
+    std::map<std::string, std::string> staticFuncMapping;
+
+    /// @brief Хранилище переменных
+    std::set<std::string> allVariables;
+
+//    std::set<std::string> localVariables;
+
+    std::map<std::string, bool> variableToExpr;
+
+    z3::context z3contex;
+
 
 };
 

@@ -15,7 +15,7 @@
 AnalyzeProcess::AnalyzeProcess()
 {
     allFunctions = Context::Instance().getAllFunction();
-    context = nullptr;
+    processContext = nullptr;
     allocatedFunctions.insert(std::string("malloc"));
     allocatedFunctions.insert(std::string("socket"));
     allocatedFunctions.insert(std::string("accept"));
@@ -27,11 +27,11 @@ void AnalyzeProcess::StartAnalyze()
     std::cout << "Start analyze." << std::endl;
     for( const auto &f : *allFunctions )
     {
-        processFunction(f.second);
+        ProcessFunction(f.second);
     }
 }
 
-void AnalyzeProcess::processFunction( Target::Function *function )
+void AnalyzeProcess::ProcessFunction( Target::Function *function )
 {
     auto funName = function->getName();
     if( processedFunctions.find(funName) != processedFunctions.end())
@@ -53,61 +53,61 @@ void AnalyzeProcess::processFunction( Target::Function *function )
         // prevent recursion
         if( funName != calleeFun->first )
         {
-            processFunction(calleeFun->second);
+            ProcessFunction(calleeFun->second);
         }
     }
 
     // process
-    context = std::make_unique<ProcessContext>(funName);
+    processContext = std::make_unique<ProcessContext>(funName);
 
-    processCompound(function->startState());
+    ProcessCompound(function->StartState());
 
     if( !function->returnName.empty())
     {
-        context->fsm->SetReturnVarName(function->returnName);
+        processContext->fsm->SetReturnVarName(function->returnName);
     }
-    context->fsm->ProcessReturnNone();
+    processContext->fsm->ProcessReturnNone();
     processedFunctions.insert(funName);
-    context.reset();
+    processContext.reset();
 }
 
-void AnalyzeProcess::processStatement( Statement *stmt )
+void AnalyzeProcess::ProcessStatement( Statement *stmt )
 {
     switch( stmt->GetType())
     {
         case COMPOUND:
         {
-            processCompound(dynamic_cast<CompoundStatement *>(stmt));
+            ProcessCompound(dynamic_cast<CompoundStatement *>(stmt));
             break;
         }
         case VarAssigmentNew:
         {
-            processVarAssigmentNew(dynamic_cast<VarAssigmentNewStatement *>(stmt));
+            ProcessVarAssigmentNew(dynamic_cast<VarAssigmentNewStatement *>(stmt));
             break;
         }
         case VarAssigmentFromFoo:
         {
-            processVarAssigmentFromFoo(dynamic_cast<VarAssigmentFromFooStatement *>(stmt));
+            ProcessVarAssigmentFromFoo(dynamic_cast<VarAssigmentFromFooStatement *>(stmt));
             break;
         }
         case VarAssigmentFromPointer:
         {
-            processVarAssigmentFromPointer(dynamic_cast<VarAssigmentFromPointerStatement *>(stmt));
+            ProcessVarAssigmentFromPointer(dynamic_cast<VarAssigmentFromPointerStatement *>(stmt));
             break;
         }
         case DELETE:
         {
-            processDelete(dynamic_cast<DeleteStatement *>(stmt));
+            ProcessDelete(dynamic_cast<DeleteStatement *>(stmt));
             break;
         }
         case IF:
         {
-            processIF(dynamic_cast<IfStatement *>(stmt));
+            ProcessIF(dynamic_cast<IfStatement *>(stmt));
             break;
         }
         case Return:
         {
-            processReturn(dynamic_cast<ReturnStatement *>(stmt));
+            ProcessReturn(dynamic_cast<ReturnStatement *>(stmt));
             break;
         }
         default:
@@ -119,18 +119,18 @@ void AnalyzeProcess::processStatement( Statement *stmt )
 }
 
 
-void AnalyzeProcess::processCompound( Target::CompoundStatement *statement )
+void AnalyzeProcess::ProcessCompound( Target::CompoundStatement *statement )
 {
     for( auto st : statement->getStates())
     {
-        processStatement(st);
+        ProcessStatement(st);
     }
 }
 
-void AnalyzeProcess::processVarAssigmentNew( VarAssigmentNewStatement *statement )
+void AnalyzeProcess::ProcessVarAssigmentNew( VarAssigmentNewStatement *statement )
 {
     auto varName = statement->varName;
-    PtrCounter &lhsCnt = context->variables[ varName ];
+    PtrCounter &lhsCnt = processContext->variables[ varName ];
     ++(lhsCnt.count);
 
     StateFSM state;
@@ -147,17 +147,17 @@ void AnalyzeProcess::processVarAssigmentNew( VarAssigmentNewStatement *statement
         state.allocPointers.push_back(vv);
     }
     //Отметить new.
-    context->allocated.push_back(vv);
+    processContext->allocatedVars.push_back(vv);
 
     std::shared_ptr<VariableSMT> vvFormulae(new VariableSMT(vv));
     state.formulae.push_back(vvFormulae);
 
-    context->fsm->AddStateToLeaves(state, context->fairPred);
+    processContext->fsm->AddStateToLeaves(state, processContext->fairPred);
 }
 
-void AnalyzeProcess::processVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement )
+void AnalyzeProcess::ProcessVarAssigmentFromFoo( VarAssigmentFromFooStatement *statement )
 {
-    PtrCounter &lhsCnt = context->variables[ statement->varName ];
+    PtrCounter &lhsCnt = processContext->variables[ statement->varName ];
 
     if( allocatedFunctions.find(statement->fooName) !=
         allocatedFunctions.end())
@@ -173,20 +173,20 @@ void AnalyzeProcess::processVarAssigmentFromFoo( VarAssigmentFromFooStatement *s
 //        if( statement->isDecl )
 //        {
         //Отметить new.
-        context->allocated.push_back(vv);
+        processContext->allocatedVars.push_back(vv);
 //        }
 
         std::shared_ptr<VariableSMT> vvForm(new VariableSMT(vv));
         state.formulae.push_back(vvForm);
 
-        context->fsm->AddStateToLeaves(state, context->fairPred);
+        processContext->fsm->AddStateToLeaves(state, processContext->fairPred);
     }
 }
 
-void AnalyzeProcess::processVarAssigmentFromPointer( VarAssigmentFromPointerStatement *statement )
+void AnalyzeProcess::ProcessVarAssigmentFromPointer( VarAssigmentFromPointerStatement *statement )
 {
     auto varName = statement->varName;
-    PtrCounter &lhsCnt = context->variables[ varName ];
+    PtrCounter &lhsCnt = processContext->variables[ varName ];
     int lhsVer = ++(lhsCnt.count);
 
     StateFSM state;
@@ -195,7 +195,7 @@ void AnalyzeProcess::processVarAssigmentFromPointer( VarAssigmentFromPointerStat
     std::shared_ptr<VariableSMT> lhsForm(new VariableSMT(lhsVar));
     state.formulae.push_back(lhsForm);
 
-    PtrCounter &rhsCnt = context->variables[ statement->rhsName ];
+    PtrCounter &rhsCnt = processContext->variables[ statement->rhsName ];
     int rhsVer = rhsCnt.count;
     VersionedVariable rhsVar(statement->rhsName, statement->loc, VAR_POINTER, rhsVer);
     //VariableSMT *rhsForm = new VariableSMT();
@@ -209,63 +209,61 @@ void AnalyzeProcess::processVarAssigmentFromPointer( VarAssigmentFromPointerStat
     std::shared_ptr<FormulaSMT> bs(new BinarySMT(lhsVar, rhsVar, EqualSMT, false));
     state.formulae.push_back(bs);
 
-    context->fsm->AddStateToLeaves(state, context->fairPred);
+    processContext->fsm->AddStateToLeaves(state, processContext->fairPred);
 }
 
 
-void AnalyzeProcess::processDelete( DeleteStatement *statement )
+void AnalyzeProcess::ProcessDelete( DeleteStatement *statement )
 {
-    auto cntIter = context->variables.find(statement->name);
+    auto cntIter = processContext->variables.find(statement->name);
     VersionedVariable vv(statement->name, "unused", cntIter->second.meta, cntIter->second.count);
 
-    context->fsm->AddDeleteState(vv, statement->isArray);
+    processContext->fsm->AddDeleteState(vv, statement->isArray);
 }
 
-void AnalyzeProcess::processIF( IfStatement *statement )
+void AnalyzeProcess::ProcessIF( IfStatement *statement )
 {
     // process then
-    // скорей всего в then находятся какие то простые действия, которые нам не интересны
-    // например присвоение констант или еще что то такое
+    StateFSM s1;
+
     if( statement->thenSt )
     {
 //        ctx.fsm->PushCondition(condStr);
         StateFSM s;
-        context->fsm->AddStateToLeaves(s, context->fairPred, statement->condStr, false);
-        processStatement(statement->thenSt);
+        processContext->fsm->AddStateToLeaves(s, processContext->fairPred, statement->condStr, false);
+        ProcessStatement(statement->thenSt);
 //        ctx.fsm->PopCondition();
     }
 
     // process else
-    // тоже самое, как для then, но есть еще случай, когда else вообще отсутствует
     if( statement->elseSt )
     {
 //        ctx.fsm->PushCondition(elseStr);
         StateFSM s;
-        context->fsm->AddStateToLeaves(s, context->branchPred, statement->elseStr, true);
-        processStatement(statement->elseSt);
+        processContext->fsm->AddStateToLeaves(s, processContext->branchPred, statement->elseStr, false);
+        ProcessStatement(statement->elseSt);
 //        ctx.fsm->PopCondition();
     }
 }
 
 
-void AnalyzeProcess::processReturn( ReturnStatement *statement )
+void AnalyzeProcess::ProcessReturn( ReturnStatement *statement )
 {
     if( !statement->returnVarName.empty())
     {
         std::set<std::string> tmp;
         tmp.insert(statement->returnVarName);
-        context->fsm->SetReturnVarName(tmp);
+        processContext->fsm->SetReturnVarName(tmp);
     }
 
-    context->fsm->ProcessReturnNone();
+    processContext->fsm->ProcessReturnNone();
 
-    bool isAllocFoo = context->fsm->IsAllocReturns();
-    if( isAllocFoo )
+    if( processContext->fsm->IsAllocReturns() )
     {
-        allocatedFunctions.insert(context->fsm->FunctionName());
+        allocatedFunctions.insert(processContext->fsm->FunctionName());
     }
 
-    context->fsm->ClearReturnVarName();
+    processContext->fsm->ClearReturnVarName();
 }
 
 

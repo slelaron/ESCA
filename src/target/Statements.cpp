@@ -45,20 +45,16 @@ DeleteStatement::DeleteStatement( const std::string &name, bool isArray )
 }
 
 
-IfStatement::IfStatement( Statement *thenSt, Statement *elseSt, const std::string &condStr,
+IfStatement::IfStatement( CompoundStatement *thenSt, CompoundStatement *elseSt, const std::string &condStr,
                           const std::string &elseStr )
         : thenSt(thenSt), elseSt(elseSt), condStr(condStr), elseStr(elseStr)
 {
-    static int a = 0;
-    a++;
 }
 
 
 ReturnStatement::ReturnStatement( const std::string &returnVarName )
         : returnVarName(returnVarName)
 {
-    static int a = 123;
-    a++;
 }
 
 }

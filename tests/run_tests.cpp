@@ -1,5 +1,6 @@
 #include <iostream>
 #include <filesystem>
+#include <utils/DefectStorage.h>
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
 
@@ -19,24 +20,22 @@ int main()
     std::vector<std::string> files = {
             "test2.cpp",
     };
-    std::cout << RESOURCE_PATH << std::endl;
-
-//    freopen("analyze.info", "w", stdout);
 
     ASTWalker walker(INCLUDE_PATHS);
     CommonStorage::Instance().SetIncludeDirs(INCLUDE_PATHS);
-//    walker.SetIncludeDirectories(INCLUDE_PATHS);
     for( const auto &file: files )
     {
         if( !walker.WalkAST(RESOURCE_PATH + file))
         {
             std::cerr << "Failed to walk for file: " << file << std::endl;
         }
-        std::cout << "Finish walk file: " << file << std::endl;
+        std::cout << "Finish walk file: " << RESOURCE_PATH + file << std::endl;
     }
 
     AnalyzeProcess a;
     a.StartAnalyze();
+
+    DefectStorage::Instance().PrintDefects();
 
     std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
     return 0;

@@ -15,6 +15,7 @@ target_link_libraries(ESCA
         target
         fsm
         smt
+        z3
         clangAST
         clangLex
         clangBasic
