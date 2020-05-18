@@ -1,8 +1,8 @@
-#include <cstdio>
-#include <iostream>
-#include <filesystem>
+//#include <cstdio>
+//#include <iostream>
+//#include <filesystem>
 #include <vector>
-
+#include <exception>
 
 void foo1( int &x, int y )
 {
@@ -11,18 +11,20 @@ void foo1( int &x, int y )
     int *b = new int(*a);
     x = *b;
     delete a;
+    // +leak b
 }
 
 void foo2()
 {
 // PVS не нашла
-    int *x = new int;
+    int *x = new int(0);
     int *y = x;
+    // +leak y
 }
 
 void getPath( char **p )
 {
-    *p = const_cast<char *>("fasdf");
+    *p = (char*)"fasdf";
 }
 
 FILE *openFile()
@@ -31,6 +33,15 @@ FILE *openFile()
     char *path = new char[256];
     getPath(&path);
     return fopen(path, "r");
+    // +leak path
+}
+
+void getFile()
+{
+// PVS и Cppcheck не нашли
+    char *path = new char[256];
+    getPath(&path);
+    // +leak path
 }
 
 int *create1()
@@ -43,6 +54,7 @@ int checkCreate()
 {
     int *p = create1();
     return *(p + 1);
+    // +leak p
 }
 
 int *create2()
@@ -60,6 +72,7 @@ int getValue( int x )
         *a = 10;
     }
     return *a;
+    // +leak a
 }
 
 void foo3( int a )
@@ -69,6 +82,7 @@ void foo3( int a )
     {
         delete b;
     }
+    // -leak b
 }
 
 void foo4( int a )
@@ -76,6 +90,7 @@ void foo4( int a )
     int *b = new int(123);
     return;
     delete b;
+    // +leak b
 }
 
 void foo5( int a )
@@ -86,10 +101,11 @@ void foo5( int a )
         b = new int(123);
     }
 
-    if( a == 1 )
+    if( a - 1 )
     {
         delete b;
     }
+    // -leak b
 }
 
 void foo6( int a )
@@ -104,6 +120,7 @@ void foo6( int a )
     {
         delete b[ i ];
     }
+    // -leak b[9]
 }
 
 int *f()
@@ -122,7 +139,7 @@ void bar( int *a )
 
 int foo7()
 {
-    int *a = f();
+    int *a = f(); // ложное срабатывание
     bar(a);
     return 123;
 }
@@ -138,10 +155,11 @@ void foo8()
         char ch = a[9];
         if( x > 5 )
         {
-            throw std::logic_error(ch);
+            throw std::logic_error("asfd");
         }
         // никто не нашел
         delete[] a;
+        // -leak a
     }
     catch( const std::exception &e )
     {

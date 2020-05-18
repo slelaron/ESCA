@@ -4,6 +4,7 @@
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
 
+#ifdef __unix__
 const std::vector<std::string> INCLUDE_PATHS = {
         "/usr/include/",
         "/usr/include/c++/9/",
@@ -12,17 +13,18 @@ const std::vector<std::string> INCLUDE_PATHS = {
         "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
 //        "/usr/lib/llvm-10/include/",
 };
-
+#endif
 
 int main()
 {
     const std::string RESOURCE_PATH = std::filesystem::current_path().string() + "/examples/";
     std::vector<std::string> files = {
-            "test2.cpp",
+            "test3.cpp",
+//            "test2.cpp",
+//            "test1.cpp",
     };
 
     ASTWalker walker(INCLUDE_PATHS);
-    CommonStorage::Instance().SetIncludeDirs(INCLUDE_PATHS);
     for( const auto &file: files )
     {
         if( !walker.WalkAST(RESOURCE_PATH + file))

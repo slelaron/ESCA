@@ -135,7 +135,6 @@ int main( int argc, char **argv )
             "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
             "/usr/lib/llvm-10/include/",
     };
-    CommonStorage::Instance().SetIncludeDirs(paths);
 #endif
     ASTWalker walker(paths);
 

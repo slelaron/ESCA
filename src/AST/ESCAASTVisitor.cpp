@@ -15,6 +15,7 @@
 
 #include "Output.h"
 
+#define context Target::Context::Instance()
 
 bool ESCAASTVisitor::VisitFunctionDecl( clang::FunctionDecl *f )
 {
@@ -77,40 +78,45 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
             ++numMain;
         }
 
-        Target::Context::Instance().AddFunction(funName);
+        context.AddFunction(funName);
 
         /// MAIN FUNCTION
         ProcessStmt(body);
 
+        if( context.CatchException())
+        {
+            context.curFunction->SetException(context.GetException());
+        }
+
         // lazy
         //ProcessReturnNone();
+        context.Reset();
         allVariables.clear();
-//        localVariables.clear();
         variableToExpr.clear();
+//        localVariables.clear();
     }
 
     return true;
 }
 
 
-bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
+bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt )
 {
     if( !stmt )
     {
         return true;
     }
 
-    Cout << "~~Processing statement~~\n";
     //stmt->dump();
     using namespace clang;
 
+    // TODO: add throwable function
     if( auto compSt = dyn_cast<CompoundStmt>(stmt))
     {
-        ProcessCompound(compSt, addToStates);
+        ProcessCompound(compSt);
     }
     else if( auto declSt = dyn_cast<DeclStmt>(stmt))
     {
-        Cout << "DeclStmt!\n";
         if( declSt->isSingleDecl())
         {
             auto sd = declSt->getSingleDecl();
@@ -154,7 +160,6 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
     }
     else if( auto delSt = dyn_cast<CXXDeleteExpr>(stmt))
     {
-        Cout << "delete!\n";
         ProcessDelete(delSt);
     }
     else if( auto retSt = dyn_cast<ReturnStmt>(stmt))
@@ -167,22 +172,14 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
     }
     else if( auto tr = dyn_cast<CXXTryStmt>(stmt))
     {
-//        std::cout << "try expr" << std::endl;
-//        tr->dump();
-        if( auto trBlock = dyn_cast<CompoundStmt>(tr->getTryBlock()))
-        {
-            ProcessCompound(trBlock, addToStates);
-        }
-
+        ProcessTry(tr);
     }
     else if( auto exWithClUp = dyn_cast<ExprWithCleanups>(stmt))
     {
         auto thr = exWithClUp->children().begin();
-        if( auto throws = dyn_cast<CXXThrowExpr>(*thr))
+        if( auto throwSt = dyn_cast<CXXThrowExpr>(*thr))
         {
-            // TODO: переделать, добавить обработку throw
-//            std::cout << "throw expr" << std::endl;
-//            throws->dump();
+            ProcessThrow(throwSt);
         }
     }
     else if( auto cycle = dyn_cast<WhileStmt>(stmt))
@@ -203,22 +200,31 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt, bool addToStates )
     return true;
 }
 
-bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool addToStates )
+bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool createOnStack )
 {
     auto saveVars = allVariables;
+    if( createOnStack )
+    {
+        context.CreateCompoundStatement();
+    }
 
-    Target::Context::Instance().createCompoundStatement(addToStates);
-
-//    Target::Context::Instance().setIf(state);
+//    context.setIf(state);
 //    body->dump();
     for( auto iter = body->body_begin(); iter != body->body_end(); ++iter )
     {
-        ProcessStmt(*iter, addToStates);
+        ProcessStmt(*iter);
+        if( context.CatchException())
+        {
+            break;
+        }
     }
 
     allVariables = saveVars; // удаляем локальные переменные
 
-    Target::Context::Instance().popCompound();
+    if( createOnStack )
+    {
+        context.PopCompound();
+    }
 
     return true;
 }
@@ -235,7 +241,7 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
         {
             std::string fooName = foo->getNameInfo().getName().getAsString();
 //            std::string fooName = foo->getQualifier()->getAsNamespace()->getQualifiedNameAsString();
-            if( Target::Context::Instance().IsFreeFunction(fooName))
+            if( context.IsFreeFunction(fooName))
             {
                 auto x = rhsRefExpr->getArg(0);
                 std::string varName;
@@ -264,7 +270,7 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
 //                    fooName = staticFuncMapping[ fooName ];
 //                }
 
-                Target::Context::Instance().AddToLast(new Target::DeleteStatement(varName, false));
+                context.AddToLast(new Target::DeleteStatement(varName, false));
             }
         }
     }
@@ -279,8 +285,8 @@ void ESCAASTVisitor::AddVarDeclFromFoo( const std::string &varName, std::string 
         fooName = staticFuncMapping[ fooName ];
     }
 
-    Target::Context::Instance().curFunction->callee.push_back(fooName);
-    Target::Context::Instance().AddToLast(
+    context.curFunction->callee.push_back(fooName);
+    context.AddToLast(
             new Target::VarAssigmentFromFooStatement(varName, fooName, location, isDecl));
 }
 
@@ -292,7 +298,7 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     // пример: x = new int[10]
     if( auto newOp = dyn_cast<CXXNewExpr>(init))
     {
-        Target::Context::Instance().AddToLast(
+        context.AddToLast(
                 new Target::VarAssigmentNewStatement(lhsName, newOp->isArray(), getLocation(newOp), isDecl));
         return true;
     }
@@ -315,7 +321,7 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     {
         std::string rhsPointerName = rhsPointer->getNameInfo().getName().getAsString();
 
-        Target::Context::Instance().AddToLast(
+        context.AddToLast(
                 new Target::VarAssigmentFromPointerStatement(lhsName, rhsPointerName, getLocation(rhsPointer), isDecl));
     }
     // для функций
@@ -435,7 +441,7 @@ bool ESCAASTVisitor::ProcessDelete( clang::CXXDeleteExpr *del )
         {
             std::string varName = delPtr->getNameInfo().getAsString();
 
-            Target::Context::Instance().AddToLast(new Target::DeleteStatement(varName, del->isArrayForm()));
+            context.AddToLast(new Target::DeleteStatement(varName, del->isArrayForm()));
         }
     }
     return true;
@@ -460,13 +466,13 @@ bool ESCAASTVisitor::ProcessReturn( clang::ReturnStmt *ret )
         {
             std::string retName = ref->getNameInfo().getName().getAsString();
 
-            Target::Context::Instance().curFunction->returnName.insert(retName);
+            context.curFunction->returnName.insert(retName);
 
             returnVarName2 = retName;
         }
     }
 
-    Target::Context::Instance().AddToLast(new Target::ReturnStatement(returnVarName2));
+    context.AddToLast(new Target::ReturnStatement(returnVarName2));
 
     return true;
 }
@@ -515,23 +521,68 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
 //    std::cout << "\tCondition: " << condStr << "\n";
     if( cond->isEvaluatable(*astContext))
     {
-//        std::cout << ""
+        //todo
     }
 
 
-    Target::Context::Instance().CreateIfStatement(ifstmt->hasElseStorage(), condStr, elseStr);
-
-    ProcessStmt(ifstmt->getThen(), false);
-
-    if( ifstmt->hasElseStorage())
+    context.CreateIfStatement(ifstmt->hasElseStorage(), condStr, elseStr);
+    if( auto thenSt = clang::dyn_cast<clang::CompoundStmt>(ifstmt->getThen()))
     {
-        Target::Context::Instance().SwitchToElse();
-        ProcessStmt(ifstmt->getElse(), false);
+        ProcessCompound(thenSt, false);
+    }
+    else
+    {
+        throw std::logic_error("Can't get then");
     }
 
-    Target::Context::Instance().PopIfStatement();
+    context.SwitchToElse();
+    if( ifstmt->hasElseStorage() && !context.CatchException())
+    {
+        auto elseSt = clang::dyn_cast<clang::CompoundStmt>(ifstmt->getElse());
+        ProcessCompound(elseSt, false);
+        context.PopCompound();
+    }
 
     return true;
+}
+
+void ESCAASTVisitor::ProcessThrow( clang::CXXThrowExpr *stmt )
+{
+    if( auto constrExp = clang::dyn_cast<clang::CXXConstructExpr>(stmt->getSubExpr()))
+    {
+        auto exceptionName = constrExp->getConstructor()->getNameAsString();
+        context.CreateThrow(exceptionName);
+    }
+}
+
+void ESCAASTVisitor::ProcessTry( clang::CXXTryStmt *stmt )
+{
+    //        std::cout << "try expr" << std::endl;
+//    stmt->dump();
+    context.CreateTryStatement();
+    if( auto trBlock = clang::dyn_cast<clang::CompoundStmt>(stmt->getTryBlock()))
+    {
+        ProcessCompound(trBlock, false);
+    }
+    if( context.CatchException())
+    {
+        auto eName = context.GetException();
+        for( size_t i = 0; i < stmt->getNumHandlers(); ++i )
+        {
+            auto exceptionCatchStr = stmt->getHandler(i)->getCaughtType().getAsString();
+            if( exceptionCatchStr.find(eName) != std::string::npos ||
+                exceptionCatchStr.find("std::exception") != std::string::npos )
+            {
+                context.CreateCatchStatement();
+                auto catchSt = clang::cast<clang::CompoundStmt>(stmt->getHandler(i)->getHandlerBlock());
+                ProcessCompound(catchSt, false);
+                context.CreateThrow(""); // очищаем исключение, оно поймано
+                assert(!context.CatchException());
+                break;
+            }
+        }
+    }
+    context.PopCompound(); // убираем tryBlock или catch
 }
 
 

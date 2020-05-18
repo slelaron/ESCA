@@ -19,6 +19,7 @@
 ASTWalker::ASTWalker( const std::vector<std::string> &paths )
         : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer())
 {
+    CommonStorage::Instance().SetIncludeDirs(paths);
     SetIncludeDirectories(paths);
 
     fileManager = std::make_unique<clang::FileManager>(fileSystemOptions);

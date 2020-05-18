@@ -4,14 +4,24 @@
 namespace Target
 {
 
-void CompoundStatement::addState( Statement *st )
+void CompoundStatement::AddState( Statement *st )
 {
     statements.push_back(st);
 }
 
-const std::vector<Statement *> &CompoundStatement::getStates() const
+const std::vector<Statement *> &CompoundStatement::GetStates() const
 {
     return statements;
+}
+
+void CompoundStatement::SetOptions( const CompoundStatement::IsInOptions &otherOptions )
+{
+    op = otherOptions;
+}
+
+CompoundStatement::IsInOptions CompoundStatement::GetOptions() const
+{
+    return op;
 }
 
 VarAssigmentFromFooStatement::VarAssigmentFromFooStatement( const std::string &varName,

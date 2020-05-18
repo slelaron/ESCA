@@ -14,7 +14,7 @@
 
 AnalyzeProcess::AnalyzeProcess()
 {
-    allFunctions = Context::Instance().getAllFunction();
+    allFunctions = Context::Instance().GetAllFunction();
     processContext = nullptr;
     allocatedFunctions.insert(std::string("malloc"));
     allocatedFunctions.insert(std::string("socket"));
@@ -33,7 +33,7 @@ void AnalyzeProcess::StartAnalyze()
 
 void AnalyzeProcess::ProcessFunction( Target::Function *function )
 {
-    auto funName = function->getName();
+    auto funName = function->GetName();
     if( processedFunctions.find(funName) != processedFunctions.end())
     {
         // already in process
@@ -105,6 +105,12 @@ void AnalyzeProcess::ProcessStatement( Statement *stmt )
             ProcessIF(dynamic_cast<IfStatement *>(stmt));
             break;
         }
+        case TRY:
+        {
+            ProcessCompound(dynamic_cast<TryStatement *>(stmt)->trySt);
+            ProcessCompound(dynamic_cast<TryStatement *>(stmt)->catchSt);
+            break;
+        }
         case Return:
         {
             ProcessReturn(dynamic_cast<ReturnStatement *>(stmt));
@@ -121,7 +127,9 @@ void AnalyzeProcess::ProcessStatement( Statement *stmt )
 
 void AnalyzeProcess::ProcessCompound( Target::CompoundStatement *statement )
 {
-    for( auto st : statement->getStates())
+    if( !statement )
+        return;
+    for( auto st : statement->GetStates())
     {
         ProcessStatement(st);
     }
@@ -258,7 +266,7 @@ void AnalyzeProcess::ProcessReturn( ReturnStatement *statement )
 
     processContext->fsm->ProcessReturnNone();
 
-    if( processContext->fsm->IsAllocReturns() )
+    if( processContext->fsm->IsAllocReturns())
     {
         allocatedFunctions.insert(processContext->fsm->FunctionName());
     }

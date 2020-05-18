@@ -18,9 +18,10 @@ enum STATEMENTS
     VarAssigmentFromFoo,
     VarAssigmentFromPointer,
     DELETE,
-    IF,
     Return,
-    UNKNOWN
+    IF,
+    TRY,
+    UNKNOWN,
 };
 
 namespace Target
@@ -44,16 +45,33 @@ class CompoundStatement : public Statement
 public:
     CompoundStatement() = default;
 
-    void addState( Statement *st );
+    void AddState( Statement *st );
 
-    const std::vector<Statement *> &getStates() const;
+    const std::vector<Statement *> &GetStates() const;
 
     STATEMENTS GetType() override
     {
         return STATEMENTS::COMPOUND;
     }
 
+    class IsInOptions
+    {
+    public:
+        bool isThen = false;
+        bool isElse = false;
+        bool isTry = false;
+        bool isCatch = false;
+        bool isFor = false;
+        bool isWhile = false;
+    };
+
+    void SetOptions( const CompoundStatement::IsInOptions &otherOptions );
+
+    CompoundStatement::IsInOptions GetOptions() const;
+
 private:
+
+    IsInOptions op;
     std::vector<Statement *> statements;
 };
 
@@ -126,6 +144,19 @@ public:
 };
 
 
+class ReturnStatement : public Statement
+{
+public:
+    explicit ReturnStatement( const std::string &returnVarName );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::Return;
+    }
+
+    std::string returnVarName;
+};
+
 class IfStatement : public Statement
 {
 public:
@@ -144,17 +175,21 @@ public:
 };
 
 
-class ReturnStatement : public Statement
+class TryStatement : public Statement
 {
 public:
-    explicit ReturnStatement( const std::string &returnVarName );
+    TryStatement( CompoundStatement *trySt, CompoundStatement *catchSt ) : trySt(trySt), catchSt(catchSt)
+    {
+    }
 
     STATEMENTS GetType() override
     {
-        return STATEMENTS::Return;
+        return STATEMENTS::TRY;
     }
 
-    std::string returnVarName;
+    CompoundStatement *trySt = nullptr;
+    CompoundStatement *catchSt = nullptr;
 };
+
 
 } // target

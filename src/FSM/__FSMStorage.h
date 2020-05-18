@@ -1,4 +1,3 @@
-/// очередной неизвестный файл
 #ifndef FSM_STORAGE_H
 #define FSM_STORAGE_H
 

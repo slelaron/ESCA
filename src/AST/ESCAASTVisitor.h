@@ -28,10 +28,12 @@ private:
 
     /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
     /// @param stmt - состояние которое нужно проверить
-    /// @param addToState - нужно ли сохранять в контекст
-    bool ProcessStmt( clang::Stmt *stmt, bool addToState = true );
+    bool ProcessStmt( clang::Stmt *stmt);
 
-    bool ProcessCompound( clang::CompoundStmt *body, bool );
+    /// @brief Метод запускает анализ по Compound-стэйту
+    ///        Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
+    /// @param createOnStack - нужно ли сохранять в контекст
+    bool ProcessCompound( clang::CompoundStmt *body, bool createOnStack = true);
 
     bool ProcessDeclaration( clang::VarDecl *vd );
 
@@ -47,10 +49,13 @@ private:
 
     bool ProcessIf( clang::IfStmt *ifstmt );
 
-    //    bool ProcessReturnNone(); //Pointers are not returned.
+    void ProcessThrow( clang::CXXThrowExpr *stmt );
+
+    void ProcessTry( clang::CXXTryStmt *stmt );
 
     //    bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
 
+    //    bool ProcessReturnNone(); //Pointers are not returned.
 
 private:
     void
@@ -78,7 +83,6 @@ private:
     std::map<std::string, bool> variableToExpr;
 
     z3::context z3contex;
-
 
 };
 

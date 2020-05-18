@@ -7,7 +7,7 @@ class Function
 public:
     Function() = delete;
 
-    explicit Function( const std::string &name ) : name(name), statement(nullptr), isThrowable(false)
+    explicit Function( const std::string &name ) : name(name), statement(nullptr)
     {
     }
 
@@ -31,7 +31,15 @@ public:
         return statement;
     }
 
-    bool isThrowable;
+    bool IsThrowable()
+    {
+        return !exceptionName.empty();
+    }
+
+    void SetException( const std::string &eName )
+    {
+        exceptionName = eName;
+    }
 
     /// @brief Имена функций которые вызываются внутри функции
     std::vector<std::string> callee;
@@ -39,7 +47,7 @@ public:
     std::set<std::string> returnName;
 
     /// @brief Возвращает имя функции
-    std::string getName() const
+    std::string GetName() const
     {
         return name;
     }
@@ -49,6 +57,7 @@ private:
     CompoundStatement *statement;
 
     std::string name;
+    std::string exceptionName;
 
 };
 

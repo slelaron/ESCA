@@ -2,6 +2,7 @@
 /// @date 20.04.2020.
 
 #include <cassert>
+#include <iostream>
 #include "Context.h"
 
 
@@ -19,33 +20,48 @@ Context::Context()
 #endif
 }
 
+Context &Context::Instance()
+{
+    static Context instance;
+    return instance;
+}
+
+void Context::Reset()
+{
+//    curFunction = nullptr;
+    if( !compoundStatementsStack.empty())
+    {
+        std::cerr << "Something was wrong. Compound stack must be empty!" << std::endl;
+        compoundStatementsStack.clear();
+    }
+    exceptionName.clear();
+}
+
+
 void Context::AddFunction( const std::string &name )
 {
-    curFunction = new Function(name);
+    assert(compoundStatementsStack.empty());
+    assert(exceptionName.empty());
+    auto funName = name;
+//    if( allFunctions.find(funName) != allFunctions.end())
+//    {
+//        static int fNum = 1;
+//        funName += std::to_string(fNum);
+//        ++fNum;
+//    }
+    curFunction = new Function(funName);
     // FIXME: тут возникают коллизии если у функций одинаковые названия и они в разных файлах
-    allFunctions[ name ] = curFunction;
+    allFunctions[ funName ] = curFunction;
 }
+
 
 void Context::AddToLast( Statement *s )
 {
-    if( isInIf )
-    {
-        assert(!ifStatementsStack.empty());
-        if( onThen )
-        {
-            ifStatementsStack.back().second->thenSt->addState(s);
-        }
-        else
-        {
-            ifStatementsStack.back().second->elseSt->addState(s);
-        }
-        return;
-    }
     assert(!compoundStatementsStack.empty());
-    compoundStatementsStack.back()->addState(s);
+    compoundStatementsStack.back()->AddState(s);
 }
 
-CompoundStatement *Context::createCompoundStatement( bool addToStates )
+CompoundStatement *Context::CreateCompoundStatement()
 {
     auto s = new CompoundStatement();
     if( compoundStatementsStack.empty())
@@ -53,8 +69,7 @@ CompoundStatement *Context::createCompoundStatement( bool addToStates )
         // начало функции
         curFunction->MakeStart(s);
     }
-
-    if( !compoundStatementsStack.empty() && addToStates )
+    else
     {
         AddToLast(s);
     }
@@ -63,19 +78,13 @@ CompoundStatement *Context::createCompoundStatement( bool addToStates )
 }
 
 
-void Context::popCompound()
+void Context::PopCompound()
 {
-    //lastPoped = stackSt.back();
     compoundStatementsStack.pop_back();
 }
 
-Context &Context::Instance()
-{
-    static Context instance;
-    return instance;
-}
 
-std::map<std::string, Target::Function *> *Context::getAllFunction()
+std::map<std::string, Target::Function *> *Context::GetAllFunction()
 {
     return &allFunctions;
 }
@@ -90,48 +99,65 @@ bool Context::IsFreeFunction( const std::string &function )
     return freeFunctions.count(function);
 }
 
-IfStatement *Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
+void Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
 {
     auto thenSt = new CompoundStatement();
     auto elseSt = hasElse ? new CompoundStatement() : nullptr;
+
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isThen = true;
+    op.isElse = false;
+    thenSt->SetOptions(op);
+
     auto ifSt = new IfStatement(thenSt, elseSt, cond, elseCond);
     AddToLast(ifSt);
-    isInIf = true;
-    onThen = true;
-    ifStatementsStack.emplace_back(onThen, ifSt);
-    return ifSt;
+    compoundStatementsStack.push_back(thenSt);
 }
 
 void Context::SwitchToElse()
 {
-    if( !onThen || ifStatementsStack.back().second->elseSt == nullptr )
+    compoundStatementsStack.pop_back(); // убираем then
+    auto ifStmt = dynamic_cast<IfStatement *>(compoundStatementsStack.back()->GetStates().back());
+    assert(ifStmt); // последний положенный должен быть if
+    if( ifStmt->elseSt && exceptionName.empty())
     {
-        throw std::logic_error("Else is empty, or you need go on then first");
+        auto op = compoundStatementsStack.back()->GetOptions();
+        op.isThen = false;
+        op.isElse = true;
+        ifStmt->elseSt->SetOptions(op);
+        compoundStatementsStack.push_back(ifStmt->elseSt);
     }
-    onThen = false;
-    ifStatementsStack.back().first = onThen;
 }
 
-void Context::PopIfStatement()
+void Context::CreateThrow( const std::string &eName )
 {
-    assert(!ifStatementsStack.empty());
-    ifStatementsStack.pop_back();
-    if( ifStatementsStack.empty())
-    {
-        isInIf = false;
-    }
-    else
-    {
-        onThen = ifStatementsStack.back().first;
-    }
+    exceptionName = eName;
 }
 
+void Context::CreateTryStatement()
+{
+    auto tryBlock = new CompoundStatement();
+    auto catchBlock = new CompoundStatement();
+    auto trySt = new TryStatement(tryBlock, catchBlock);
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isTry = true;
+    tryBlock->SetOptions(op);
+    AddToLast(trySt);
+    compoundStatementsStack.push_back(tryBlock);
+}
 
+void Context::CreateCatchStatement()
+{
+    compoundStatementsStack.pop_back(); // убираем блок try
+    auto tryStmt = dynamic_cast<TryStatement *>(compoundStatementsStack.back()->GetStates().back());
+    assert(tryStmt); // последний положенный должен быть try
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isTry = false;
+    op.isCatch = true;
+    tryStmt->catchSt->SetOptions(op);
+    compoundStatementsStack.push_back(tryStmt->catchSt);
+}
 
-//Function *Context::getLastFunction() const
-//{
-//    return curFunction;
-//}
 
 //Statement* getLastPoped() {
 //    auto tmp = lastPoped;
@@ -139,16 +165,5 @@ void Context::PopIfStatement()
 //    return tmp;
 //}
 
-//    кладет с вершины стэка в общую схему
-//    void addCompoundStatement()
-//    {
-//        //if (stackSt.size() > 1) {
-//        //    stackSt[stackSt.size() - 2]->addState(stackSt.back());
-//        //}
-//        //AddToLast(stackSt.back());
-//    }
-
-//
-//
 
 }

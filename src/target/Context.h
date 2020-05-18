@@ -14,6 +14,8 @@ public:
     /// @brief Возвращает единственный экземпляр контекста
     static Context &Instance();
 
+    void Reset();
+
     /// @brief Текущая анализируемая функция
     Function *curFunction;
 
@@ -21,10 +23,10 @@ public:
     void AddFunction( const std::string &name );
 
     /// @brief Метод создает составное состояние и добавляет его на вершину стэка
-    CompoundStatement *createCompoundStatement( bool addToStates = true );
+    CompoundStatement *CreateCompoundStatement();
 
     /// @brief Метод удаляет последнее составное состояние со стека
-    void popCompound();
+    void PopCompound();
 
     /// @brief Метод добавляет к последнему составному состоянию в стеке вложеное состояние
     void AddToLast( Statement *s );
@@ -36,22 +38,38 @@ public:
     bool IsFreeFunction( const std::string &function );
 
     /// @brief Метод возвращает указатель на мап со всеми функциями
-    std::map<std::string, Target::Function *> *getAllFunction();
+    std::map<std::string, Target::Function *> *GetAllFunction();
 
-    IfStatement *CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
+    /// @brief Метод создает условное состояние и добавляет его к последнему Compound
+    ///        и также добавляет к compoundStatementsStack  then-стэйтмент
+    /// @param hasElse - если ли ветка else у условного перехода
+    void CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
 
-    void PopIfStatement();
-
+    /// @brief Метод убирает с compoundStatementsStack then-стэйтмент
+    ///        и если есть else добавляет его стэйтмент
     void SwitchToElse();
 
+    void CreateThrow( const std::string &exceptionName );
+
+    void CreateTryStatement();
+
+    void CreateCatchStatement();
+
+    inline const std::string &GetException() const
+    {
+        return exceptionName;
+    }
+
+    inline bool CatchException() const
+    {
+        return !exceptionName.empty();
+    }
+
 private:
+    /// Конструктор
     Context();
 
-    bool onThen = true;
-    bool isInIf = false;
-
-    /// @brief Стек с условными состояниями (onThen, ifStatement)
-    std::vector<std::pair<bool, IfStatement *>> ifStatementsStack;
+    std::string exceptionName;
 
     /// @brief Стек с составными состояниями
     std::vector<CompoundStatement *> compoundStatementsStack;
