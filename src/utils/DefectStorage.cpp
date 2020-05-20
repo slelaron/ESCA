@@ -43,7 +43,7 @@ void DefectStorage::PrintDefects( const std::string &outputFile )
 
     for( const auto &defect : defects )
     {
-        outf << "Memory leak. Variable name: " << defect.varName << " Location: " << defect.location << "\n";
+        outf << "Resource leak. Variable name: " << defect.varName << " Location: " << defect.location << "\n";
     }
     outf << "Found " << defects.size() << " leaks\n";
     outf.close();

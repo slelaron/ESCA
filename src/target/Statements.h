@@ -69,6 +69,14 @@ public:
 
     CompoundStatement::IsInOptions GetOptions() const;
 
+    virtual ~CompoundStatement()
+    {
+        for( auto s : statements )
+        {
+            delete s;
+        }
+    }
+
 private:
 
     IsInOptions op;
@@ -168,6 +176,14 @@ public:
         return STATEMENTS::IF;
     }
 
+    virtual ~IfStatement()
+    {
+        if( elseSt )
+            delete elseSt;
+        if( thenSt )
+            delete thenSt;
+    }
+
     CompoundStatement *thenSt = nullptr;
     CompoundStatement *elseSt = nullptr;
     std::string condStr;
@@ -186,6 +202,15 @@ public:
     {
         return STATEMENTS::TRY;
     }
+
+    virtual ~TryStatement()
+    {
+        if( trySt )
+            delete trySt;
+        if( catchSt )
+            delete catchSt;
+    }
+
 
     CompoundStatement *trySt = nullptr;
     CompoundStatement *catchSt = nullptr;

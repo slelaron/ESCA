@@ -16,10 +16,10 @@ AnalyzeProcess::AnalyzeProcess()
 {
     allFunctions = Context::Instance().GetAllFunction();
     processContext = nullptr;
-    allocatedFunctions.insert(std::string("malloc"));
-    allocatedFunctions.insert(std::string("socket"));
-    allocatedFunctions.insert(std::string("accept"));
-    allocatedFunctions.insert(std::string("fopen"));
+//    allocatedFunctions.insert(std::string("malloc"));
+//    allocatedFunctions.insert(std::string("socket"));
+//    allocatedFunctions.insert(std::string("accept"));
+//    allocatedFunctions.insert(std::string("fopen"));
 }
 
 void AnalyzeProcess::StartAnalyze()
@@ -28,6 +28,12 @@ void AnalyzeProcess::StartAnalyze()
     for( const auto &f : *allFunctions )
     {
         ProcessFunction(f.second);
+    }
+    for( auto &f : *allFunctions )
+    {
+        ProcessFunction(f.second);
+        delete f.second;
+        f.second = nullptr;
     }
 }
 

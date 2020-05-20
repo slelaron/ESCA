@@ -133,7 +133,7 @@ int main( int argc, char **argv )
             "/usr/include/x86_64-linux-gnu/",
             "/usr/include/x86_64-linux-gnu/c++/9/",
             "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
-            "/usr/lib/llvm-10/include/",
+//            "/usr/lib/llvm-10/include/",
     };
 #endif
     ASTWalker walker(paths);
@@ -145,7 +145,7 @@ int main( int argc, char **argv )
     AnalyzeProcess a;
     a.StartAnalyze();
 
-    DefectStorage::Instance().PrintDefects();
+    DefectStorage::Instance().PrintDefects("defects_output.txt");
 
     std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
 

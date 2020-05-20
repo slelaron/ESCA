@@ -6,10 +6,10 @@
 #include <llvm/Support/raw_ostream.h>
 #include <clang/AST/PrettyPrinter.h>
 #include <clang/AST/ASTContext.h>
-#include <iostream>
 
 #include "../target/Context.h"
-#include <z3++.h>
+//#include <z3++.h>
+#include <DefectStorage.h>
 
 #include "ESCAASTVisitor.h"
 
@@ -19,6 +19,17 @@
 
 bool ESCAASTVisitor::VisitFunctionDecl( clang::FunctionDecl *f )
 {
+    isInDestruct = false;
+    isInConstructor = false;
+    if( clang::isa<clang::CXXConstructorDecl>(f))
+    {
+        isInConstructor = true;
+    }
+    if( clang::isa<clang::CXXDestructorDecl>(f))
+    {
+        isInDestruct = true;
+    }
+
     return ProcessFunction(f);
 }
 
@@ -33,11 +44,12 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 {
     astContext = &f->getASTContext();
     std::string funName = f->getNameInfo().getName().getAsString();
+//    std::string funName = f->getQualifiedNameAsString();
 
     ////////////
-    auto loc = f->getLocation();
     clang::SourceManager &sm = f->getASTContext().getSourceManager();
     currSM = &sm;
+    auto loc = f->getLocation();
     auto lstr = loc.printToString(sm);
 //    clang::SourceLocation::getFromPtrEncoding(loc.getPtrEncoding()).print(llvm::nulls(), sm);
 
@@ -85,12 +97,17 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
 
         if( context.CatchException())
         {
+            if( isInDestruct || isInConstructor )
+            {
+                DefectStorage::Instance().AddDefect(f->getQualifiedNameAsString(), lstr);
+            }
+            context.throwsFunctions.insert({funName, context.GetException()});
             context.curFunction->SetException(context.GetException());
         }
 
         // lazy
         //ProcessReturnNone();
-        context.Reset();
+        context.ResetFunction();
         allVariables.clear();
         variableToExpr.clear();
 //        localVariables.clear();
@@ -110,7 +127,6 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt )
     //stmt->dump();
     using namespace clang;
 
-    // TODO: add throwable function
     if( auto compSt = dyn_cast<CompoundStmt>(stmt))
     {
         ProcessCompound(compSt);
@@ -194,7 +210,7 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt )
     }
     else if( auto rhsRefExpr = dyn_cast<CallExpr>(stmt))
     {
-        ProcessFree(rhsRefExpr);
+        ProcessCallFunction(rhsRefExpr);
     }
 
     return true;
@@ -229,12 +245,21 @@ bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool createOnSt
     return true;
 }
 
-bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
+bool ESCAASTVisitor::ProcessCallFunction( clang::CallExpr *rhsRefExpr )
 {
     using namespace clang;
 
     auto callee = rhsRefExpr->getCallee();
-    //callee->dump();
+    if( auto memExpr = dyn_cast<MemberExpr>(callee))
+    {
+        std::string fooName = memExpr->getMemberNameInfo().getName().getAsString();
+        EditFunName(fooName);
+        if( context.throwsFunctions.count(fooName))
+        {
+            context.CreateThrow(context.throwsFunctions[ fooName ]);
+            return true;
+        }
+    }
     if( auto subExpr = dyn_cast<ImplicitCastExpr>(callee))
     {
         if( auto foo = dyn_cast<DeclRefExpr>(subExpr->getSubExpr()))
@@ -250,7 +275,6 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
                 {
                     if( auto im2 = dyn_cast<ImplicitCastExpr>(im->getSubExpr())) // for free
                     {
-//                        auto x2 = im2->getSubExpr()->getStmtClassName();
                         if( auto d = dyn_cast<DeclRefExpr>(im2->getSubExpr()))
                         {
                             varName = d->getNameInfo().getName().getAsString();
@@ -265,11 +289,6 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
                     }
                 }
 
-//                if( staticFuncMapping.find(fooName) != staticFuncMapping.end())
-//                {
-//                    fooName = staticFuncMapping[ fooName ];
-//                }
-
                 context.AddToLast(new Target::DeleteStatement(varName, false));
             }
         }
@@ -280,12 +299,13 @@ bool ESCAASTVisitor::ProcessFree( clang::CallExpr *rhsRefExpr )
 void ESCAASTVisitor::AddVarDeclFromFoo( const std::string &varName, std::string &fooName, const std::string &location,
                                         bool isDecl )
 {
-    if( staticFuncMapping.find(fooName) != staticFuncMapping.end())
-    {
-        fooName = staticFuncMapping[ fooName ];
-    }
-
+    EditFunName(fooName);
     context.curFunction->callee.push_back(fooName);
+    if( context.throwsFunctions.count(fooName))
+    {
+        context.CreateThrow(context.throwsFunctions[ fooName ]);
+        return;
+    }
     context.AddToLast(
             new Target::VarAssigmentFromFooStatement(varName, fooName, location, isDecl));
 }
@@ -295,6 +315,7 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     using namespace clang;
     // для new
     // пример: int *x = new int[10]
+    // или
     // пример: x = new int[10]
     if( auto newOp = dyn_cast<CXXNewExpr>(init))
     {
@@ -317,6 +338,8 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
     // пример:
     // int *x, *a;
     // x = a;
+    // или
+    // int * x = a;
     if( auto rhsPointer = dyn_cast<DeclRefExpr>(init))
     {
         std::string rhsPointerName = rhsPointer->getNameInfo().getName().getAsString();
@@ -325,7 +348,8 @@ bool ESCAASTVisitor::ProcessAssignment( const clang::Stmt *init, const std::stri
                 new Target::VarAssigmentFromPointerStatement(lhsName, rhsPointerName, getLocation(rhsPointer), isDecl));
     }
     // для функций
-    // пример: x = ret_int()
+    // пример: int *x = ret_int()
+    //         x = ret_int()
     if( auto rhsRefExpr = dyn_cast<CallExpr>(init))
     {
         if( auto subExpr = dyn_cast<ImplicitCastExpr>(rhsRefExpr->getCallee()))
@@ -364,6 +388,10 @@ bool ESCAASTVisitor::EvaluateBool( const clang::Stmt *init, bool &res )
 bool ESCAASTVisitor::ProcessDeclaration( clang::VarDecl *vd )
 {
     using namespace clang;
+    if( !vd )
+    {
+        return true;
+    }
     auto init = vd->getAnyInitializer();
     if( init == nullptr )
     {
@@ -383,8 +411,7 @@ bool ESCAASTVisitor::ProcessDeclaration( clang::VarDecl *vd )
         {
             if( EvaluateBool(init, res))
             {
-//                z3::expr x = z3contex.bool_val(res);
-//                variableToExpr[ varName ] = x;
+                //todo
             }
 
         }
@@ -450,17 +477,17 @@ bool ESCAASTVisitor::ProcessDelete( clang::CXXDeleteExpr *del )
 bool ESCAASTVisitor::ProcessReturn( clang::ReturnStmt *ret )
 {
     clang::Expr *retVal = ret->getRetValue();
-
-//    returnExpr = retVal;
+    if( !retVal )
+    {
+        return true;
+    }
 
     std::string returnVarName2;
 
-    //retVal->dump();
     using namespace clang;
 
-    if( retVal && isa<ImplicitCastExpr>(retVal))
+    if( auto ice = dyn_cast<ImplicitCastExpr>(retVal))
     {
-        auto ice = cast<ImplicitCastExpr>(retVal);
         Stmt *subexpr = ice->getSubExpr();
         if( auto ref = dyn_cast<DeclRefExpr>(subexpr)) //pointer
         {
@@ -470,6 +497,13 @@ bool ESCAASTVisitor::ProcessReturn( clang::ReturnStmt *ret )
 
             returnVarName2 = retName;
         }
+    }
+    else if( auto newPtr = dyn_cast<CXXNewExpr>(retVal))
+    {
+        std::string dummyNewVarName = "!dummyVar";
+        context.curFunction->returnName.insert(dummyNewVarName);
+        context.AddToLast(new Target::VarAssigmentNewStatement(dummyNewVarName, newPtr->isArray(), "something", true));
+        returnVarName2 = dummyNewVarName;
     }
 
     context.AddToLast(new Target::ReturnStatement(returnVarName2));
@@ -484,31 +518,31 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     auto cond = ifstmt->getCond();
 //    cond->dump();
 //    {
-//        auto curCond = cond;
-//        if( auto c = clang::dyn_cast<clang::UnaryOperator>(curCond))
-//        {
-//            curCond = c->getSubExpr();
-//        }
-//
-//        if( auto castSt = clang::dyn_cast<clang::CastExpr>(curCond))
-//        {
-//            auto sub4 = castSt->getSubExpr();
-//            if( auto castSt3 = clang::dyn_cast<clang::CastExpr>(sub4))
-//            {
-//                auto sub3 = castSt3->getSubExpr();
-//                if( auto parenSt = clang::dyn_cast<clang::ParenExpr>(sub3))
-//                {
-//                    auto sub = parenSt->getSubExpr();
-//                    if( auto bo = clang::dyn_cast<clang::BinaryOperator>(sub))
-//                    {
-//                        if( bo->isAssignmentOp())
-//                        {
-//                            ProcessBinOp(bo);
-//                        }
-//                    }
-//                }
-//            }
-//        }
+    auto curCond = cond;
+    if( auto c = clang::dyn_cast<clang::UnaryOperator>(curCond))
+    {
+        curCond = c->getSubExpr();
+    }
+
+    if( auto castSt = clang::dyn_cast<clang::CastExpr>(curCond))
+    {
+        auto sub4 = castSt->getSubExpr();
+        if( auto castSt3 = clang::dyn_cast<clang::CastExpr>(sub4))
+        {
+            auto sub3 = castSt3->getSubExpr();
+            if( auto parenSt = clang::dyn_cast<clang::ParenExpr>(sub3))
+            {
+                auto sub = parenSt->getSubExpr();
+                if( auto bo = clang::dyn_cast<clang::BinaryOperator>(sub))
+                {
+                    if( bo->isAssignmentOp())
+                    {
+                        ProcessBinOp(bo);
+                    }
+                }
+            }
+        }
+    }
 //    }
     std::string typeS;
     llvm::raw_string_ostream lso(typeS);
@@ -525,21 +559,32 @@ bool ESCAASTVisitor::ProcessIf( clang::IfStmt *ifstmt )
     }
 
 
-    context.CreateIfStatement(ifstmt->hasElseStorage(), condStr, elseStr);
+    if( !context.CreateIfStatement(ifstmt->hasElseStorage(), condStr, elseStr))
+    {
+        return false;
+    }
     if( auto thenSt = clang::dyn_cast<clang::CompoundStmt>(ifstmt->getThen()))
     {
         ProcessCompound(thenSt, false);
     }
     else
     {
-        throw std::logic_error("Can't get then");
+//        ifstmt->dump();
+        ProcessStmt(ifstmt->getThen());
     }
 
     context.SwitchToElse();
     if( ifstmt->hasElseStorage() && !context.CatchException())
     {
-        auto elseSt = clang::dyn_cast<clang::CompoundStmt>(ifstmt->getElse());
-        ProcessCompound(elseSt, false);
+        if( auto elseSt = clang::dyn_cast<clang::CompoundStmt>(ifstmt->getElse()))
+        {
+            ProcessCompound(elseSt, false);
+        }
+        else
+        {
+//            ifstmt->getElse()->dump();
+            ProcessStmt(ifstmt->getElse());
+        }
         context.PopCompound();
     }
 
@@ -559,7 +604,10 @@ void ESCAASTVisitor::ProcessTry( clang::CXXTryStmt *stmt )
 {
     //        std::cout << "try expr" << std::endl;
 //    stmt->dump();
-    context.CreateTryStatement();
+    if( !context.CreateTryStatement())
+    {
+        return;
+    }
     if( auto trBlock = clang::dyn_cast<clang::CompoundStmt>(stmt->getTryBlock()))
     {
         ProcessCompound(trBlock, false);
@@ -585,6 +633,13 @@ void ESCAASTVisitor::ProcessTry( clang::CXXTryStmt *stmt )
     context.PopCompound(); // убираем tryBlock или catch
 }
 
+void ESCAASTVisitor::EditFunName( std::string &funName )
+{
+    if( staticFuncMapping.find(funName) != staticFuncMapping.end())
+    {
+        funName = staticFuncMapping[ funName ];
+    }
+}
 
 //bool ESCAASTVisitor::ProcessReturnNone()
 //{

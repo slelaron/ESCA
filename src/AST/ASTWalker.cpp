@@ -62,7 +62,7 @@ void ASTWalker::makeContext()
 #else
     pTextDiagnosticPrinter = std::make_unique<clang::TextDiagnosticPrinter>(llvm::nulls(), &diagnosticOptions);
 #endif
-    auto *pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs, &diagnosticOptions, pTextDiagnosticPrinter.get());
+    pDiagnosticsEngine = new clang::DiagnosticsEngine(pDiagIDs, &diagnosticOptions, pTextDiagnosticPrinter.get());
 
     sourceManager = std::make_unique<clang::SourceManager>(*pDiagnosticsEngine, *fileManager);
 
@@ -136,6 +136,8 @@ bool ASTWalker::WalkAST( const std::string &fileName )
     clang::ParseAST(*preprocessor, static_cast<clang::ASTConsumer *>(astConsumer.get()), *astContext);
     pTextDiagnosticPrinter->EndSourceFile();
     delete preprocessor;
+    delete pTargetInfo;
+//    delete pDiagnosticsEngine;
     return true;
 }
 
@@ -155,11 +157,18 @@ void ASTWalker::WalkAST( const std::vector<std::string> &files )
 {
     for( const auto &file : files )
     {
-//        std::cout << "Start analyze for " << file << std::endl;
-        if( !WalkAST(file))
+        try
         {
-            std::cerr << "Failed to walk for file: " << file << std::endl;
+            if( !WalkAST(file))
+            {
+                std::cerr << "Failed to walk for file: " << file << std::endl;
+            }
         }
+        catch( std::exception &e )
+        {
+            std::cerr << "File : " << file << ". exception: " << e.what();
+        }
+//        std::cout << "Start analyze for " << file << std::endl;
         std::cout << "Finish walk file: " << file << std::endl;
     }
     std::cout << "End walk." << std::endl;

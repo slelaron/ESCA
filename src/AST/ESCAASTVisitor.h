@@ -4,7 +4,7 @@
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
-#include <z3++.h>
+//#include <z3++.h>
 
 
 /// @class Класс, который выполняет предварительный обход всего Clang AST дерева и посещает каждый узел.
@@ -28,12 +28,12 @@ private:
 
     /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
     /// @param stmt - состояние которое нужно проверить
-    bool ProcessStmt( clang::Stmt *stmt);
+    bool ProcessStmt( clang::Stmt *stmt );
 
     /// @brief Метод запускает анализ по Compound-стэйту
     ///        Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
     /// @param createOnStack - нужно ли сохранять в контекст
-    bool ProcessCompound( clang::CompoundStmt *body, bool createOnStack = true);
+    bool ProcessCompound( clang::CompoundStmt *body, bool createOnStack = true );
 
     bool ProcessDeclaration( clang::VarDecl *vd );
 
@@ -43,7 +43,7 @@ private:
 
     bool ProcessDelete( clang::CXXDeleteExpr *del );
 
-    bool ProcessFree( clang::CallExpr *rhsRef );
+    bool ProcessCallFunction( clang::CallExpr *rhsRefExpr );
 
     bool ProcessReturn( clang::ReturnStmt *ret );
 
@@ -58,18 +58,24 @@ private:
     //    bool ProcessReturnNone(); //Pointers are not returned.
 
 private:
+    /// @brief Метод добавляет в контекст операцию присваивания перменной функции
+    /// @param varName - имя алоцируемой переменной
+    /// @param fooName - имя функции, которая возвращает указатель на ресурс
+    /// @param isDecl - является ли переменная обявлением или объявлена ранее
     void
     AddVarDeclFromFoo( const std::string &varName, std::string &fooName, const std::string &location, bool isDecl );
 
     /// @brief Метод анализирует операцию присваивания
     /// @param init - инициализатор переменной
     /// @param lhsName - имя алоцируемой переменной
-    /// @param isDecl - проделорирована ли переменная
+    /// @param isDecl - продеклорирована ли переменная
     bool ProcessAssignment( const clang::Stmt *init, const std::string &lhsName, bool isDecl );
 
     bool EvaluateBool( const clang::Stmt *init, bool &res );
 
-    clang::ASTContext *astContext;
+    void EditFunName( std::string &funName );
+
+    clang::ASTContext *astContext = nullptr;
     /// @brief Менеджер для получения строки в текущей функции
     clang::SourceManager *currSM = nullptr;
 
@@ -82,7 +88,11 @@ private:
 
     std::map<std::string, bool> variableToExpr;
 
-    z3::context z3contex;
+//    std::map<std::string, std::set<std::string>> classToVars;
+
+    bool isInDestruct = false;
+    bool isInConstructor = true;
+//    z3::context z3contex;
 
 };
 

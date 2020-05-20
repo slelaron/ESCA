@@ -49,6 +49,7 @@ protected:
     std::unique_ptr<ESCAASTConsumer> astConsumer;
 
 private:
+    clang::DiagnosticsEngine *pDiagnosticsEngine;
     llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> pDiagIDs;
     clang::FileSystemOptions fileSystemOptions = clang::FileSystemOptions();
     clang::CompilerInstance compInst;

@@ -52,6 +52,11 @@ public:
         return name;
     }
 
+    ~Function()
+    {
+        delete statement;
+    }
+
 private:
     /// @brief Начальное состояние в функции
     CompoundStatement *statement;

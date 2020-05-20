@@ -26,7 +26,7 @@ Context &Context::Instance()
     return instance;
 }
 
-void Context::Reset()
+void Context::ResetFunction()
 {
 //    curFunction = nullptr;
     if( !compoundStatementsStack.empty())
@@ -99,8 +99,12 @@ bool Context::IsFreeFunction( const std::string &function )
     return freeFunctions.count(function);
 }
 
-void Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
+bool Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
 {
+    if( compoundStatementsStack.size() > 4 )
+    {
+        return false;
+    }
     auto thenSt = new CompoundStatement();
     auto elseSt = hasElse ? new CompoundStatement() : nullptr;
 
@@ -112,6 +116,7 @@ void Context::CreateIfStatement( bool hasElse, const std::string &cond, const st
     auto ifSt = new IfStatement(thenSt, elseSt, cond, elseCond);
     AddToLast(ifSt);
     compoundStatementsStack.push_back(thenSt);
+    return true;
 }
 
 void Context::SwitchToElse()
@@ -134,8 +139,10 @@ void Context::CreateThrow( const std::string &eName )
     exceptionName = eName;
 }
 
-void Context::CreateTryStatement()
+bool Context::CreateTryStatement()
 {
+    if( compoundStatementsStack.size() > 4 )
+        return false;
     auto tryBlock = new CompoundStatement();
     auto catchBlock = new CompoundStatement();
     auto trySt = new TryStatement(tryBlock, catchBlock);
@@ -144,6 +151,7 @@ void Context::CreateTryStatement()
     tryBlock->SetOptions(op);
     AddToLast(trySt);
     compoundStatementsStack.push_back(tryBlock);
+    return true;
 }
 
 void Context::CreateCatchStatement()

@@ -14,7 +14,7 @@ public:
     /// @brief Возвращает единственный экземпляр контекста
     static Context &Instance();
 
-    void Reset();
+    void ResetFunction();
 
     /// @brief Текущая анализируемая функция
     Function *curFunction;
@@ -43,7 +43,7 @@ public:
     /// @brief Метод создает условное состояние и добавляет его к последнему Compound
     ///        и также добавляет к compoundStatementsStack  then-стэйтмент
     /// @param hasElse - если ли ветка else у условного перехода
-    void CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
+    bool CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
 
     /// @brief Метод убирает с compoundStatementsStack then-стэйтмент
     ///        и если есть else добавляет его стэйтмент
@@ -51,7 +51,7 @@ public:
 
     void CreateThrow( const std::string &exceptionName );
 
-    void CreateTryStatement();
+    bool CreateTryStatement();
 
     void CreateCatchStatement();
 
@@ -64,6 +64,8 @@ public:
     {
         return !exceptionName.empty();
     }
+
+    std::map<std::string, std::string> throwsFunctions;
 
 private:
     /// Конструктор
