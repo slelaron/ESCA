@@ -5,7 +5,7 @@
 #include <clang/AST/DeclGroup.h>
 
 #include "ESCAASTVisitor.h"
-
+#include "../utils/common.h"
 
 class ESCAASTConsumer : public clang::ASTConsumer
 {
@@ -13,29 +13,34 @@ public:
     /// @brief Переопределяемая функция для прохода по AST дереву нашим AST visitor
     bool HandleTopLevelDecl( clang::DeclGroupRef DR ) override
     {
+        std::string loc;
         for( auto it : DR )
         {
+            loc = it->getLocation().printToString(it->getASTContext().getSourceManager());
+//            std::cout << loc << std::endl;
+            auto colonId = loc.find(':');
+            if( colonId != std::string::npos )
+            {
+                loc = loc.substr(0, colonId);
+            }
+            if( CommonStorage::Instance().InIncludeDirs(loc))
+            {
+                return true;
+            }
+            CommonStorage::Instance().AddAnalyzeFile(loc);
+//            std::cout << loc << std::endl;
+
+//            if( loc.find(Options::Instance().analyzeFile) == std::string::npos )
+//            {
+//                return true;
+//            }
+
             // Traverse the declaration using our AST visitor.
             visitor.TraverseDecl(it);
+
         }
 
         return true;
-    }
-
-    /// @brief Запоминаем пути для AST visitor которые следует проигнорировать
-    inline void SetExcludedPaths( const std::vector<std::string> &path )
-    {
-        visitor.SetExcludedPaths(path);
-    }
-
-    inline void SetAnaliseFile( const std::string &file )
-    {
-        visitor.SetAnaliseFile(file);
-    }
-
-    Target::Context GetContext()
-    {
-        return visitor.getContext();
     }
 
 private:

@@ -1,102 +1,101 @@
+/// @file Statements.h
+///
+/// @brief Класс всех состояний анализируемого кода
+///
+/// @author alexust27
+/// Contact: ustinov1998s@gmail.com
+///
+
 #include <map>
 #include <set>
 #include <vector>
 
-#include "ProcessCtx.h"
+
+enum STATEMENTS
+{
+    COMPOUND,
+    VarAssigmentNew,
+    VarAssigmentFromFoo,
+    VarAssigmentFromPointer,
+    DELETE,
+    Return,
+    IF,
+    TRY,
+    UNKNOWN,
+};
 
 namespace Target
 {
+/// @brief Общий класс для всех состояний анализируемого кода
 class Statement
 {
 public:
-    /// @brief Запуск анализа соответствующего состояния
-    /// @param ctx - контекст запуска, хранит FSM
-    virtual void process( ProcessCtx &ctx ) = 0;
+
+    virtual STATEMENTS GetType()
+    {
+        return STATEMENTS::UNKNOWN;
+    }
 
     virtual ~Statement() = default;
 };
 
-/// @brief Состовное состояние, содержит несколько состояний
+/// @brief Составное состояние, содержит несколько состояний
 class CompoundStatement : public Statement
 {
 public:
     CompoundStatement() = default;
 
-    void addState( Statement *st );
+    void AddState( Statement *st );
 
-    void process( ProcessCtx &ctx ) override;
+    const std::vector<Statement *> &GetStates() const;
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::COMPOUND;
+    }
+
+    class IsInOptions
+    {
+    public:
+        bool isThen = false;
+        bool isElse = false;
+        bool isTry = false;
+        bool isCatch = false;
+        bool isFor = false;
+        bool isWhile = false;
+    };
+
+    void SetOptions( const CompoundStatement::IsInOptions &otherOptions );
+
+    CompoundStatement::IsInOptions GetOptions() const;
+
+    virtual ~CompoundStatement()
+    {
+        for( auto s : statements )
+        {
+            delete s;
+        }
+    }
 
 private:
+
+    IsInOptions op;
     std::vector<Statement *> statements;
-};
-
-
-class DeleteStatement : public Statement
-{
-public:
-    DeleteStatement( const std::string &name, bool isArray );
-
-    void process( ProcessCtx &ctx ) override;
-
-private:
-    std::string name;
-    bool isArray;
-};
-
-
-class IfStatement : public Statement
-{
-public:
-    IfStatement( Target::Statement *thenSt, Target::Statement *elseSt, const std::string &condStr,
-                 const std::string &elseStr );
-
-    void process( Target::ProcessCtx &ctx ) override;
-
-private:
-    Statement *thenSt = nullptr;
-    Statement *elseSt = nullptr;
-    std::string condStr;
-    std::string elseStr;
-};
-
-
-class VarDeclFromFooStatement : public Statement
-{
-public:
-    VarDeclFromFooStatement( const std::string &varName, const std::string &fooName,
-                             const std::string &loc );
-
-    void process( Target::ProcessCtx &ctx ) override;
-
-private:
-    std::string varName;
-    std::string fooName;
-    std::string loc;
-};
-
-
-class VarDeclNewStatement : public Statement
-{
-public:
-    VarDeclNewStatement( const std::string &varName, bool isArray, const std::string &loc );;
-
-    void process( ProcessCtx &ctx ) override;
-
-private:
-    std::string varName;
-    bool isArray;
-    std::string loc;
 };
 
 
 class VarAssigmentFromFooStatement : public Statement
 {
 public:
-    VarAssigmentFromFooStatement( const std::string &varName, const std::string &fooName, const std::string &loc );
+    VarAssigmentFromFooStatement( const std::string &varName, const std::string &fooName, const std::string &loc,
+                                  bool isDecl );
 
-    void process( ProcessCtx &ctx ) override;
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentFromFoo;
+    }
 
-private:
+    bool isDecl;
     std::string varName;
     std::string fooName;
     std::string loc;
@@ -107,28 +106,49 @@ class VarAssigmentFromPointerStatement : public Statement
 {
 public:
     VarAssigmentFromPointerStatement( const std::string &varName, const std::string &rhsName,
-                                      const std::string &loc );
+                                      const std::string &loc, bool isDecl );
 
-    void process( ProcessCtx &ctx ) override;
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentFromPointer;
+    }
 
-private:
     std::string varName;
-    std::string rhsName;
     std::string loc;
+    std::string rhsName;
+    bool isDecl;
 };
 
-
+/// auto x = new X;
 class VarAssigmentNewStatement : public Statement
 {
 public:
-    VarAssigmentNewStatement( const std::string &varName, bool isArray, const std::string &loc );
+    VarAssigmentNewStatement( const std::string &varName, bool isArray, const std::string &loc, bool isDecl );
 
-    void process( ProcessCtx &ctx ) override;
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::VarAssigmentNew;
+    }
 
-private:
     std::string varName;
-    bool isArray;
     std::string loc;
+    bool isArray;
+    bool isDecl;
+};
+
+
+class DeleteStatement : public Statement
+{
+public:
+    DeleteStatement( const std::string &name, bool isArray );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::DELETE;
+    }
+
+    std::string name;
+    bool isArray;
 };
 
 
@@ -137,10 +157,64 @@ class ReturnStatement : public Statement
 public:
     explicit ReturnStatement( const std::string &returnVarName );
 
-    void process( ProcessCtx &ctx ) override;
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::Return;
+    }
 
-private:
     std::string returnVarName;
 };
+
+class IfStatement : public Statement
+{
+public:
+    IfStatement( Target::CompoundStatement *thenSt, Target::CompoundStatement *elseSt, const std::string &condStr,
+                 const std::string &elseStr );
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::IF;
+    }
+
+    virtual ~IfStatement()
+    {
+        if( elseSt )
+            delete elseSt;
+        if( thenSt )
+            delete thenSt;
+    }
+
+    CompoundStatement *thenSt = nullptr;
+    CompoundStatement *elseSt = nullptr;
+    std::string condStr;
+    std::string elseStr;
+};
+
+
+class TryStatement : public Statement
+{
+public:
+    TryStatement( CompoundStatement *trySt, CompoundStatement *catchSt ) : trySt(trySt), catchSt(catchSt)
+    {
+    }
+
+    STATEMENTS GetType() override
+    {
+        return STATEMENTS::TRY;
+    }
+
+    virtual ~TryStatement()
+    {
+        if( trySt )
+            delete trySt;
+        if( catchSt )
+            delete catchSt;
+    }
+
+
+    CompoundStatement *trySt = nullptr;
+    CompoundStatement *catchSt = nullptr;
+};
+
 
 } // target

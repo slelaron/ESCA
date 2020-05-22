@@ -12,17 +12,19 @@ typedef std::vector<VersionedVariable> VarStorage;
 typedef std::deque<std::shared_ptr<FormulaSMT> > FormulaStorage;
 typedef std::string ConditionEvent;
 
-//class TransitionFSM;
 std::string FormulaeToString( const FormulaStorage &formulae );
 
 std::string FormulaeToStringSat( const FormulaStorage &formulae );
 
-/// @brief одно из состояний автомата
-class StateFSM
+/// @brief Одно из состояний автомата (одна операция)
+struct StateFSM
 {
-public:
     FSMID id = -1;
+
+    /// @brief Входящие ребра, по которым можно прийти в это состояние
     std::vector<FSMID> incoming;
+
+    /// @brief Исходящие ребра, по которым можно пройти из этого состояния
     std::vector<FSMID> outgoing;
 
     VarStorage allocPointers;
@@ -30,15 +32,13 @@ public:
     VarStorage delPointers;
     VarStorage delArrays;
 
+    /// Хранилище формул, которые в дальнейшем будут переданы в smt решатель
     FormulaStorage formulae;
+
     bool isEnd = false;
     bool isBranchLeaf = false; //Former leaf in which there is
 
-    std::string PrintFormulae();
-
-    std::string PrintFormulaeSat();
-
-    [[nodiscard]] inline bool IsLeaf() const
+    inline bool IsLeaf() const
     {
         return (!isEnd) && outgoing.empty();
     }

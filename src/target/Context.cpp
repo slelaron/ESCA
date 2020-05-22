@@ -2,10 +2,8 @@
 /// @date 20.04.2020.
 
 #include <cassert>
+#include <iostream>
 #include "Context.h"
-
-/// @brief множество функции которые возвращают указатель на выделенную память
-std::set<std::string> allocatedFunctions;
 
 
 namespace Target
@@ -13,100 +11,167 @@ namespace Target
 
 Context::Context()
 {
-    lastFoo = nullptr;
-    allocatedFunctions.insert(std::string("malloc"));
-
-    allocatedFunctions.insert(std::string("socket"));
-    allocatedFunctions.insert(std::string("accept"));
-
-    allocatedFunctions.insert(std::string("fopen"));
+    curFunction = nullptr;
+    freeFunctions.insert("free");
+    freeFunctions.insert("close");
+    freeFunctions.insert("fclose");
+#ifdef _WIN32
+    freeFunctions.insert("closesoket");
+#endif
 }
 
-void Context::addFunction( const std::string &name )
+Context &Context::Instance()
 {
-    extFunctions.push_back(new Function(name));
-    lastFoo = extFunctions.back();
+    static Context instance;
+    return instance;
 }
 
-Statement *Context::addDeleteStatement( const std::string &name, bool isArray )
+void Context::ResetFunction()
 {
-    return addToLast(new DeleteStatement(name, isArray));
+//    curFunction = nullptr;
+    if( !compoundStatementsStack.empty())
+    {
+        std::cerr << "Something was wrong. Compound stack must be empty!" << std::endl;
+        compoundStatementsStack.clear();
+    }
+    exceptionName.clear();
 }
 
-Statement *
-Context::addIfStatement( Statement *thenSt, Statement *elseSt, const std::string &condStr,
-                         const std::string &elseStr )
+
+void Context::AddFunction( const std::string &name )
 {
-    return addToLast(new IfStatement(thenSt, elseSt, condStr, elseStr));
+    assert(compoundStatementsStack.empty());
+    assert(exceptionName.empty());
+    auto funName = name;
+//    if( allFunctions.find(funName) != allFunctions.end())
+//    {
+//        static int fNum = 1;
+//        funName += std::to_string(fNum);
+//        ++fNum;
+//    }
+    curFunction = new Function(funName);
+    // FIXME: тут возникают коллизии если у функций одинаковые названия и они в разных файлах
+    allFunctions[ funName ] = curFunction;
 }
 
-//    просто создаем набор стейтов и добавляем его на вершину стэка,
-// не пуша никуда, для пуша в контекст есть отдельный метод
-Statement *Context::createCompoundStatement( bool addToStates )
+
+void Context::AddToLast( Statement *s )
 {
-    //addToStates = true;
+    assert(!compoundStatementsStack.empty());
+    compoundStatementsStack.back()->AddState(s);
+}
+
+CompoundStatement *Context::CreateCompoundStatement()
+{
     auto s = new CompoundStatement();
-    // начало функции
-    if( stackSt.empty())
+    if( compoundStatementsStack.empty())
     {
-        lastFoo->statement = s;
+        // начало функции
+        curFunction->MakeStart(s);
     }
-    //lastPoped = nullptr;
-    if( !stackSt.empty() && addToStates )
+    else
     {
-        addToLast(s);
+        AddToLast(s);
     }
-    stackSt.push_back(s);
+    compoundStatementsStack.push_back(s);
     return s;
 }
 
-Statement *Context::addVarDeclFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc )
+
+void Context::PopCompound()
 {
-    return addToLast(new VarDeclFromFooStatement(varName, fooName, loc));
+    compoundStatementsStack.pop_back();
 }
 
-Statement *Context::addVarDeclNew( const std::string &varName, bool isArray, const std::string &loc )
+
+std::map<std::string, Target::Function *> *Context::GetAllFunction()
 {
-    return addToLast(new VarDeclNewStatement(varName, isArray, loc));
+    return &allFunctions;
 }
 
-Statement *
-Context::addVarAssigmentFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc )
+void Context::AddFreeFunction( const std::string &function )
 {
-    return addToLast(new VarAssigmentFromFooStatement(varName, fooName, loc));
+    freeFunctions.insert(function);
 }
 
-Statement *
-Context::addVarAssigmentFromPointer( const std::string &varName, const std::string &rhsName, const std::string &loc )
+bool Context::IsFreeFunction( const std::string &function )
 {
-    return addToLast(new VarAssigmentFromPointerStatement(varName, rhsName, loc));
+    return freeFunctions.count(function);
 }
 
-Statement *Context::addVarAssigmentNew( const std::string &varName, bool isArray, const std::string &loc )
+bool Context::CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond )
 {
-    return addToLast(new VarAssigmentNewStatement(varName, isArray, loc));
+    if( compoundStatementsStack.size() > 4 )
+    {
+        return false;
+    }
+    auto thenSt = new CompoundStatement();
+    auto elseSt = hasElse ? new CompoundStatement() : nullptr;
+
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isThen = true;
+    op.isElse = false;
+    thenSt->SetOptions(op);
+
+    auto ifSt = new IfStatement(thenSt, elseSt, cond, elseCond);
+    AddToLast(ifSt);
+    compoundStatementsStack.push_back(thenSt);
+    return true;
 }
 
-Statement *Context::addReturn( const std::string &returnVarName )
+void Context::SwitchToElse()
 {
-    return addToLast(new ReturnStatement(returnVarName));
+    compoundStatementsStack.pop_back(); // убираем then
+    auto ifStmt = dynamic_cast<IfStatement *>(compoundStatementsStack.back()->GetStates().back());
+    assert(ifStmt); // последний положенный должен быть if
+    if( ifStmt->elseSt && exceptionName.empty())
+    {
+        auto op = compoundStatementsStack.back()->GetOptions();
+        op.isThen = false;
+        op.isElse = true;
+        ifStmt->elseSt->SetOptions(op);
+        compoundStatementsStack.push_back(ifStmt->elseSt);
+    }
 }
 
-void Context::popCompound()
+void Context::CreateThrow( const std::string &eName )
 {
-    //lastPoped = stackSt.back();
-    stackSt.pop_back();
+    exceptionName = eName;
 }
 
-Statement *Context::addToLast( Statement *s )
+bool Context::CreateTryStatement()
 {
-    //if (isIf) {
-    //    isIf = false;
-    //    nextInIf = s;
-    //}
-    assert(!stackSt.empty());
-    stackSt.back()->addState(s);
-    return s;
+    if( compoundStatementsStack.size() > 4 )
+        return false;
+    auto tryBlock = new CompoundStatement();
+    auto catchBlock = new CompoundStatement();
+    auto trySt = new TryStatement(tryBlock, catchBlock);
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isTry = true;
+    tryBlock->SetOptions(op);
+    AddToLast(trySt);
+    compoundStatementsStack.push_back(tryBlock);
+    return true;
 }
+
+void Context::CreateCatchStatement()
+{
+    compoundStatementsStack.pop_back(); // убираем блок try
+    auto tryStmt = dynamic_cast<TryStatement *>(compoundStatementsStack.back()->GetStates().back());
+    assert(tryStmt); // последний положенный должен быть try
+    auto op = compoundStatementsStack.back()->GetOptions();
+    op.isTry = false;
+    op.isCatch = true;
+    tryStmt->catchSt->SetOptions(op);
+    compoundStatementsStack.push_back(tryStmt->catchSt);
+}
+
+
+//Statement* getLastPoped() {
+//    auto tmp = lastPoped;
+//    lastPoped = nullptr;
+//    return tmp;
+//}
+
 
 }

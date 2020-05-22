@@ -1,13 +1,15 @@
 include_directories(../src)
 
-add_executable(test run_tests.cpp)
+add_executable(run_tests run_tests.cpp)
 
-target_link_libraries(test
+target_link_libraries(run_tests
         LLVM
+        utils
         ast
         target
         fsm
         smt
+        z3
         clangAST
         clangLex
         clangBasic

@@ -2,80 +2,67 @@
 
 namespace Target
 {
-class Function;
-}
-
-extern std::map<std::string, Target::Function *> allFunctions;
-
-extern std::set<std::string> processedFunctions;
-
-namespace Target
-{
 class Function
 {
 public:
     Function() = delete;
 
-    explicit Function( const std::string &name ) : name(name)
+    explicit Function( const std::string &name ) : name(name), statement(nullptr)
     {
     }
 
-    /// @brief состояние которое хранит все состояния функции
-    CompoundStatement *statement = nullptr;
+    /// @brief Создает начальное состояние функции
+    void MakeStart( CompoundStatement *startState )
+    {
+        if( statement )
+        {
+            throw std::logic_error("Function already has start statement");
+        }
+        statement = startState;
+    }
 
-    /// @brief имена функций которые вызываются внутри функции
+    /// @brief Возвращает начальное состояние функции
+    CompoundStatement *const StartState() const
+    {
+        if( !statement )
+        {
+            throw std::logic_error("Function hasn't had start statement yet");
+        }
+        return statement;
+    }
+
+    bool IsThrowable()
+    {
+        return !exceptionName.empty();
+    }
+
+    void SetException( const std::string &eName )
+    {
+        exceptionName = eName;
+    }
+
+    /// @brief Имена функций которые вызываются внутри функции
     std::vector<std::string> callee;
 
     std::set<std::string> returnName;
 
-    /// @brief запуск анализа функции
-    void process()
+    /// @brief Возвращает имя функции
+    std::string GetName() const
     {
-        // already proccessed
-        if( processedFunctions.find(name) != processedFunctions.end())
-        {
-            return;
-        }
+        return name;
+    }
 
-        // process all callee
-        for( const auto &c : callee )
-        {
-            if( allFunctions.find(c) == allFunctions.end())
-            {
-                // нет такой функции среди известных нам
-                continue;
-            }
-
-            // prevent recursion
-            if( name != allFunctions[ c ]->name )
-            {
-                allFunctions[ c ]->process();
-            }
-        }
-
-        // process
-        ProcessCtx ctx;
-        ctx.fsm.FunctionName(name);
-
-//        static int x = 123;
-//        if( name == "SCR_ScreenShot_f_1" )
-//        {
-//            ++x;
-//        }
-
-        statement->process(ctx);
-
-        if( !returnName.empty())
-        {
-            ctx.fsm.SetReturnVarName(returnName);
-        }
-        ctx.fsm.ProcessReturnNone();
-
-        processedFunctions.insert(name);
+    ~Function()
+    {
+        delete statement;
     }
 
 private:
+    /// @brief Начальное состояние в функции
+    CompoundStatement *statement;
+
     std::string name;
+    std::string exceptionName;
 
 };
 

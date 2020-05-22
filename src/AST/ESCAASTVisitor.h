@@ -4,100 +4,96 @@
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/AST/Expr.h>
 #include <clang/AST/Decl.h>
+//#include <z3++.h>
 
-#include "../target/Context.h"
 
-
+/// @class Класс, который выполняет предварительный обход всего Clang AST дерева и посещает каждый узел.
 class ESCAASTVisitor : public clang::RecursiveASTVisitor<ESCAASTVisitor>
 {
 public:
     ESCAASTVisitor() = default;
 
-    /// @brief основная функция, неявно вызывается при проходе по AST дереву
+    /// @brief Метод для посещения функции
+    /// @param f - основная функция
     bool VisitFunctionDecl( clang::FunctionDecl *f );
-
-    /// @brief Метод устанавливает пути которые следиет исключить из анализа AST дерева
-    /// @param _paths - пути до директорий где хранятся библиотеки (#include<some_lib>)
-    inline void SetExcludedPaths( const std::vector<std::string> &_paths )
-    {
-        excludedPaths = _paths;
-    }
-
-    inline void SetAnaliseFile( const std::string &file, bool fast = true )
-    {
-        needFast = fast;
-        analiseFile = file;
-    }
-
-    Target::Context getContext()
-    {
-        return ctx;
-    }
 
 private:
     /// @brief Получение сторки с названием файла и номером строки в нем, где находится состояние
     /// @param st - состояние
     std::string getLocation( const clang::Stmt *st );
 
-    /// @brief Сброс автомата состаяний и переменных текущей функции
-    void Reset();
-
-    /// MAIN FUNCTION
+    /// @brief Метод для посещения функции
+    /// @param f - основная функция
     bool ProcessFunction( clang::FunctionDecl *f );
 
     /// @brief Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
     /// @param stmt - состояние которое нужно проверить
-    /// @param addToState - нужно ли сохранять в контекст
-    bool ProcessStmt( clang::Stmt *stmt, bool addToState = true );
+    bool ProcessStmt( clang::Stmt *stmt );
 
-    bool ProcessCompound( clang::CompoundStmt *body, bool );
-
-    bool ProcessAssignment( clang::BinaryOperator *binop );
+    /// @brief Метод запускает анализ по Compound-стэйту
+    ///        Проверяет тип состояния (stmt) и выполняет действие в зависимости от него
+    /// @param createOnStack - нужно ли сохранять в контекст
+    bool ProcessCompound( clang::CompoundStmt *body, bool createOnStack = true );
 
     bool ProcessDeclaration( clang::VarDecl *vd );
 
+    /// @brief Метод анализирует операцию присваивания
+    /// @param binop - состояние операции присваивания
+    bool ProcessBinOp( clang::BinaryOperator *binop );
+
     bool ProcessDelete( clang::CXXDeleteExpr *del );
+
+    bool ProcessCallFunction( clang::CallExpr *rhsRefExpr );
 
     bool ProcessReturn( clang::ReturnStmt *ret );
 
     bool ProcessIf( clang::IfStmt *ifstmt );
 
-    bool ProcessReturnNone(); //Pointers are not returned.
+    void ProcessThrow( clang::CXXThrowExpr *stmt );
 
-    bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
+    void ProcessTry( clang::CXXTryStmt *stmt );
 
-    /// @brief метод проверяет находится ли файл в исключенных директориях
-    /// @param file - путь до файла который нужно проверить
-    /// @return true - если файл внутри директории, false иначе
-    bool IsInExcludedPath( const std::string &file );
+    //    bool ProcessReturnPtr( clang::ReturnStmt *ret ); //Pointers are returned.
+
+    //    bool ProcessReturnNone(); //Pointers are not returned.
 
 private:
-    /// @brief Хранит весь контекст и состояния
-    Target::Context ctx;
+    /// @brief Метод добавляет в контекст операцию присваивания перменной функции
+    /// @param varName - имя алоцируемой переменной
+    /// @param fooName - имя функции, которая возвращает указатель на ресурс
+    /// @param isDecl - является ли переменная обявлением или объявлена ранее
+    void
+    AddVarDeclFromFoo( const std::string &varName, std::string &fooName, const std::string &location, bool isDecl );
 
-    /// @brief Нужен для получения строки в текущей функции
+    /// @brief Метод анализирует операцию присваивания
+    /// @param init - инициализатор переменной
+    /// @param lhsName - имя алоцируемой переменной
+    /// @param isDecl - продеклорирована ли переменная
+    bool ProcessAssignment( const clang::Stmt *init, const std::string &lhsName, bool isDecl );
+
+    bool EvaluateBool( const clang::Stmt *init, bool &res );
+
+    void EditFunName( std::string &funName );
+
+    clang::ASTContext *astContext = nullptr;
+    /// @brief Менеджер для получения строки в текущей функции
     clang::SourceManager *currSM = nullptr;
 
     std::map<std::string, std::string> staticFuncMapping;
 
-    ///@brief пути до системных библиотек и тех которые следует исключить из анализа
-    std::vector<std::string> excludedPaths;
+    /// @brief Хранилище переменных
+    std::set<std::string> allVariables;
 
-    //std::map<std::string, std::vector<VersionedVariable> > variables;
-    //std::map<std::string, int> variables;
+//    std::set<std::string> localVariables;
 
-    // ������ �������
-    std::map<std::string, PtrCounter> variables;
-    std::string analiseFile;
-    bool needFast = true;
-    std::vector<VersionedVariable> allocated;
-    FSM fsm;
+    std::map<std::string, bool> variableToExpr;
 
-    FairLeafPredicate fairPred;
-    BranchLeafPredicate branchPred;
+//    std::map<std::string, std::set<std::string>> classToVars;
 
-    clang::Expr *returnExpr = nullptr;
-    std::string returnVarName;
+    bool isInDestruct = false;
+    bool isInConstructor = true;
+//    z3::context z3contex;
+
 };
 
 #endif

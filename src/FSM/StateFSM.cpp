@@ -18,17 +18,6 @@ std::string FormulaeToStringSat( const FormulaStorage &formulae )
 }
 
 
-std::string StateFSM::PrintFormulae()
-{
-    return FormulaeToString(formulae);
-}
-
-std::string StateFSM::PrintFormulaeSat()
-{
-    return FormulaeToStringSat(formulae);
-}
-
-
 bool operator==( const StateFSM &lhs, const StateFSM &rhs )
 {
     return lhs.id == rhs.id;

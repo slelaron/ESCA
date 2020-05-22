@@ -11,8 +11,8 @@ public:
     std::string FormatSMTLIB() override;
 
     explicit VariableSMT( const VersionedVariable &v )
+            : var(std::make_unique<VersionedVariable>(v))
     {
-        var = std::make_unique<VersionedVariable>(v);
     }
 
     inline VersionedVariable Var()

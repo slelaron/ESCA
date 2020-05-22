@@ -12,17 +12,26 @@ void error( const char *msg )
     perror(msg);
     exit(1);
 }
-int *X;
-int xxxx(){
+
+int* xxxx()
+{
     int *x = new int[10];
-    X = x;
-    return 1;
+//    X = x;
+    return x;
 }
+
+int foo11()
+{
+    int *x = new int[100];
+    x[1] = rand();
+    return x[1];
+}
+
 
 int main( int argc, char *argv[] )
 {
-    xxxx();
-    delete X;
+    int r = *xxxx();
+//    delete X;
 
     int sockfd, newsockfd, portno;
     socklen_t clilen;

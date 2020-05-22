@@ -2,24 +2,34 @@
 #include <string>
 #include <fstream>
 #include <ctime>
+#include <filesystem>
 
+#include "utils/common.h"
 #include "AST/ASTWalker.h"
+#include "target/AnalyzeProcess.h"
+#include "utils/DefectStorage.h"
 
 
 void usage()
 {
-    std::cout << "USAGE: ESCA [Options] <source> " << std::endl
+    std::cout << "USAGE: ESCA [Options] <source file> " << std::endl
               << "\tOptions:\n\t[-f|--files] <text file with exec files>" << std::endl
-              << "\t[-c|--cmake] <cmake json file>" << std::endl;
+              << "\t[-c|--cmake] <output file of compile commands>" << std::endl
+              << "\t[--fast]  -  turn on fast analyze" << std::endl;
 }
 
-void parseFile( std::vector<std::string> &files, const std::string &file, bool isCmake )
+bool parseFile( std::vector<std::string> &files, const std::string &file, bool isCmake )
 {
+    if( isCmake && file.find(".json") == std::string::npos )
+    {
+        std::cerr << "Output file of compile commands file must be json" << std::endl;
+        return false;
+    }
     std::ifstream fs(file);
     if( !fs.is_open())
     {
-        std::cerr << "can't open file: " << file << std::endl;
-        exit(1);
+        std::cerr << "Can't open file: " << file << std::endl;
+        return false;
     }
     std::string line;
     while( getline(fs, line))
@@ -30,43 +40,74 @@ void parseFile( std::vector<std::string> &files, const std::string &file, bool i
             if( s != std::string::npos )
             {
                 line = line.substr(s + 9, line.length() - s - 10);
-                files.push_back(line);
+                if( std::filesystem::exists(line))
+                {
+                    files.push_back(line);
+                }
             }
         }
         else
         {
-            files.push_back(line);
+            if( std::filesystem::exists(line))
+            {
+                files.push_back(line);
+            }
         }
     }
+    if( files.empty())
+    {
+        std::cerr << "Not found any file in " << file << std::endl;
+        return false;
+    }
+    return true;
 }
 
-void parseArgs( std::vector<std::string> &files, std::string &path, int argc, char **argv )
+bool parseArgs( std::vector<std::string> &files, std::string &path, int argc, char **argv )
 {
-    if( argc == 2 && argv[ 1 ][ 0 ] != '-' )
+    if( argc < 2 )
     {
-        files.emplace_back(argv[ 1 ]);
-        return;
+        std::cerr << "Not enough arguments" << std::endl;
+        return false;
     }
-    if( argc <= 2 || std::string(argv[ 1 ]) == "-h" || std::string(argv[ 1 ]) == "--help" )
+    if( std::string(argv[ 1 ]) == "-h" || std::string(argv[ 1 ]) == "--help" )
     {
-        std::cout << "not enough arguments" << std::endl;
-        usage();
-        exit(0);
+        return false;
     }
-    auto argv1 = std::string(argv[ 1 ]);
-    if( argv1 == "--files" || argv1 == "-f" )
+    auto flag = std::string(argv[ 1 ]);
+    int curArgv = 2;
+    if( flag == "--fast" )
     {
-        parseFile(files, argv[ 2 ], false);
+        if( argc == curArgv )
+        {
+            std::cerr << "Not enough arguments" << std::endl;
+            return false;
+        }
+        ++curArgv;
+        CommonStorage::Instance().needFast = true;
+        flag = argv[ 2 ];
     }
-    else if( argv1 == "-c" || argv1 == "--cmake" )
+    if( argc == curArgv )
     {
-        parseFile(files, argv[ 2 ], true);
+        if( std::filesystem::exists(flag))
+        {
+            files.emplace_back(flag);
+            return true;
+        }
+        std::cerr << "File " << flag << " doesn't exist" << std::endl;
+        return false;
     }
-    else
+    assert(argc > curArgv);
+
+    if( flag == "--files" || flag == "-f" )
     {
-        std::cerr << "undefined args" << std::endl;
-        exit(1);
+        return parseFile(files, argv[ curArgv ], false);
     }
+    if( flag == "-c" || flag == "--cmake" )
+    {
+        return parseFile(files, argv[ curArgv ], true);
+    }
+    std::cerr << "Undefined args" << std::endl;
+    return false;
 }
 
 
@@ -74,37 +115,39 @@ int main( int argc, char **argv )
 {
     std::vector<std::string> files;
     std::string path;
-    parseArgs(files, path, argc, argv);
-    ASTWalker walker;
-#ifdef __unix__
-// TODO: autodetect it or let user do it
-    std::vector<std::string> paths = {
+    if( !parseArgs(files, path, argc, argv))
+    {
+        usage();
+        return 1;
+    }
+    if( CommonStorage::Instance().needFast )
+    {
+        std::cout << "fast mode ON" << std::endl;
+    }
+
+    std::vector<std::string> paths;
+#ifdef TEXT_DIAG
+    paths = {
             "/usr/include/",
             "/usr/include/c++/9/",
             "/usr/include/x86_64-linux-gnu/",
             "/usr/include/x86_64-linux-gnu/c++/9/",
             "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
-            "/usr/lib/llvm-10/include/",
+//            "/usr/lib/llvm-10/include/",
     };
-    walker.SetIncludeDirectories(paths);
 #endif
+    ASTWalker walker(paths);
 
-    for( const auto &file : files )
-    {
-        std::cout << "Start analyze for " << file << std::endl;
-        if( !walker.WalkAST(file))
-        {
-            std::cerr << "Failed to analyze for file: " << file << std::endl;
-        }
-    }
 
-    std::cout << "---------------------------------------" << std::endl;
+    std::cout << "Files for analyze: " << files.size() << std::endl;
+    walker.WalkAST(files);
 
-    walker.RunAnalyzer();
+    AnalyzeProcess a;
+    a.StartAnalyze();
 
-//    unsigned int end_time = clock();
-//    unsigned int search_time = end_time - start_time;
-    std::cout << "Working time:" << clock() / CLOCKS_PER_SEC << "sec" << std::endl;
+    DefectStorage::Instance().PrintDefects("defects_output.txt");
+
+    std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
 
     return 0;
 }

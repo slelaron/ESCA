@@ -3,95 +3,84 @@
 namespace Target
 {
 
-/// @brief Структура в которой сохраняются информация о состояниях
+/// @brief Синглтон структура в которой сохраняется информация о всех состояниях анализируемой программы
 class Context
 {
 public:
-    Context();
+    Context( Context const & ) = delete;
 
-    Function *lastFoo;
+    Context &operator=( Context const & ) = delete;
 
-    void addFunction( const std::string &name );
+    /// @brief Возвращает единственный экземпляр контекста
+    static Context &Instance();
 
-    Statement *
-    addDeleteStatement( const std::string &name, bool isArray );
+    void ResetFunction();
 
-    Statement *
-    addIfStatement( Statement *thenSt, Statement *elseSt, const std::string &condStr, const std::string &elseStr );
+    /// @brief Текущая анализируемая функция
+    Function *curFunction;
 
-    Statement *
-    createCompoundStatement( bool addToStates = true );
+    /// @brief Добавляем новую анализируемую функцию
+    void AddFunction( const std::string &name );
 
-    Statement *
-    addVarDeclFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc );
+    /// @brief Метод создает составное состояние и добавляет его на вершину стэка
+    CompoundStatement *CreateCompoundStatement();
 
-    Statement *
-    addVarDeclNew( const std::string &varName, bool isArray, const std::string &loc );
+    /// @brief Метод удаляет последнее составное состояние со стека
+    void PopCompound();
 
-    Statement *
-    addVarAssigmentFromFoo( const std::string &varName, const std::string &fooName, const std::string &loc );
+    /// @brief Метод добавляет к последнему составному состоянию в стеке вложеное состояние
+    void AddToLast( Statement *s );
 
-    Statement *
-    addVarAssigmentFromPointer( const std::string &varName, const std::string &rhsName, const std::string &loc );
+    /// @brief Метод добавляет к контексту имя функции которая может освобождать ресурсы
+    void AddFreeFunction( const std::string &function );
 
-    Statement *
-    addVarAssigmentNew( const std::string &varName, bool isArray, const std::string &loc );
+    /// @brief Метод проверяет может ли функция освобождать ресурсы
+    bool IsFreeFunction( const std::string &function );
 
-    Statement *
-    addReturn( const std::string &returnVarName );
+    /// @brief Метод возвращает указатель на мап со всеми функциями
+    std::map<std::string, Target::Function *> *GetAllFunction();
 
-    void popCompound();
+    /// @brief Метод создает условное состояние и добавляет его к последнему Compound
+    ///        и также добавляет к compoundStatementsStack  then-стэйтмент
+    /// @param hasElse - если ли ветка else у условного перехода
+    bool CreateIfStatement( bool hasElse, const std::string &cond, const std::string &elseCond );
 
-    //кладет с вершины стэка в общую схему
-    // FIXME: видимо больше не кладет
-//    void addCompoundStatement()
-//    {
-//        //if (stackSt.size() > 1) {
-//        //    stackSt[stackSt.size() - 2]->addState(stackSt.back());
-//        //}
-//        //addToLast(stackSt.back());
-//    }
+    /// @brief Метод убирает с compoundStatementsStack then-стэйтмент
+    ///        и если есть else добавляет его стэйтмент
+    void SwitchToElse();
+
+    void CreateThrow( const std::string &exceptionName );
+
+    bool CreateTryStatement();
+
+    void CreateCatchStatement();
+
+    inline const std::string &GetException() const
+    {
+        return exceptionName;
+    }
+
+    inline bool CatchException() const
+    {
+        return !exceptionName.empty();
+    }
+
+    std::map<std::string, std::string> throwsFunctions;
 
 private:
-    Statement *addToLast( Statement *s );
+    /// Конструктор
+    Context();
 
-    std::vector<Function *> extFunctions;
+    std::string exceptionName;
 
-    std::vector<CompoundStatement *> stackSt;
+    /// @brief Стек с составными состояниями
+    std::vector<CompoundStatement *> compoundStatementsStack;
 
+    /// @brief Все фукнции, сохраненные для анализа
+    std::map<std::string, Target::Function *> allFunctions;
 
-    //Statement* getLastPoped() {
-    //    auto tmp = lastPoped;
-    //    lastPoped = nullptr;
-    //    return tmp;
-    //}
-
-
-    //    Statement **nextInIf = nullptr;
-//    bool isIf = false;
-//
-//    void setIf( Statement *s )
-//    {
-//
-//        if( nextInIf )
-//        {
-//            *nextInIf = s;
-//            nextInIf = nullptr;
-//        }
-//    }
-//
-//    void startIfSt( Statement **s )
-//    {
-//        nextInIf = s;
-//        isIf = true;
-//    }
-
-    //Statement* getAfterIfStatement() {
-    //    auto tmp = nextInIf;
-    //    nextInIf = nullptr;
-    //    isIf = false;
-    //    return tmp;
-    //}
+    /// @brief Фукнции, которые могут освобождать ресурсы
+    std::set<std::string> freeFunctions;
 
 };
 }

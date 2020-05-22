@@ -2,7 +2,7 @@
 ### Experimental Static Code Analyzer
 ###### for C and C++ projects
 
-This analyzer can help you to find memory leaks in your project.
+This analyzer can help you to find resource leaks in your project.
 
 C++17 version must be  or more
 Before use you need to install z3 from https://github.com/Z3Prover/z3
