@@ -39,7 +39,7 @@ public:
     virtual ~Statement() = default;
 };
 
-/// @brief Состовное состояние, содержит несколько состояний
+/// @brief Составное состояние, содержит несколько состояний
 class CompoundStatement : public Statement
 {
 public:
