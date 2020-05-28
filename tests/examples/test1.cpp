@@ -1,186 +1,121 @@
-//#include <cstdio>
-//#include <iostream>
-//#include <filesystem>
-#include <vector>
-#include <exception>
+// утечки паямти 10 ошибок
+// ESCA - 8 нашел 1 ложная
+// cppcheck - 3 нашел 0 ложных
+// pvs - 6 нашел и 1 ложное
+#include <cassert>
 
-void foo1( int &x, int y )
-{
-    int *a = new int(2);
-    *a = x + y;
-    int *b = new int(*a);
-    x = *b;
-    delete a;
-    // +leak b
+// нашли все | ESCA + | pvs +
+void test_foo1() {
+    int *x = new int[3];
+    x[ 2 ] = 2;
 }
 
-void foo2()
-{
-// PVS не нашла
-    int *x = new int(0);
-    int *y = x;
-    // +leak y
+// cppcheck - | ESCA + | pvs -
+void test_foo2( int y ) {
+    assert(y > 0);
+    int *a = new int[y];
+    a[ 0 ] = y;
+    int *b1 = a;
+    a = new int[y];
+    a[ 0 ] = b1[ 0 ];
+    delete[] a;
 }
 
-void getPath( char **p )
-{
-    *p = (char*)"fasdf";
+void getPath( char **p ) {
+    *p = (char *) "filename";
 }
 
-FILE *openFile()
-{
-// PVS и Cppcheck не нашли
+// PVS и Cppcheck - | ESCA +
+void getFile() {
     char *path = new char[256];
     getPath(&path);
-    return fopen(path, "r");
-    // +leak path
 }
 
-void getFile()
-{
-// PVS и Cppcheck не нашли
-    char *path = new char[256];
-    getPath(&path);
-    // +leak path
-}
-
-int *create1()
-{
+int *create1() {
     int *p = new int[42];
     return p;
 }
 
-int checkCreate()
-{
+// cppcheck + | ESCA +
+int test_foo3_1() {
     int *p = create1();
-    return *(p + 1);
-    // +leak p
+    return p[ 2 ];
 }
 
-int *create2()
-{
-    int *v2 = new int(111);
-    return v2;
-}
-
-int getValue( int x )
-{
-// никто из аналогов не нашел
-    int *a = create2();
-    if( *a > 10 )
-    {
-        *a = 10;
+// cppcheck - | ESCA + | pvs +
+int test_foo3_2( int x ) {
+    int *a = create1();
+    if( a[ x ] > 10 ) {
+        a = new int[2];
     }
     return *a;
-    // +leak a
 }
 
-void foo3( int a )
-{
-    int *b = new int(a);
-    if( a > 5 )
-    {
-        delete b;
+// cppcheck + | ESCA + | pvs +
+void test_foo4_1( int a ) {
+    int *b = new int[a];
+    if( a > 5 ) {
+        b = new int[5];
     }
+    b[ 2 ] = 5;
+    delete[] b;
     // -leak b
 }
 
-void foo4( int a )
-{
-    int *b = new int(123);
-    return;
-    delete b;
-    // +leak b
+// cppcheck + | ESCA + | pvs +
+void test_foo4_2( bool a ) {
+    int *b = new int[123];
+    b[ 10 ] = 2;
+    if( a ) {
+        return;
+    }
+    delete[] b;
 }
 
-void foo5( int a )
-{
+// cppcheck - | ESCA - | pvs +
+void test_foo5( int a ) {
     int *b = nullptr;
-    if( a == 1 )
-    {
-        b = new int(123);
+    if( a == 1 ) {
+        b = new int[123];
     }
 
-    if( a - 1 )
-    {
-        delete b;
+    if( a - 1 ) {
+        delete[] b;
     }
     // -leak b
 }
 
-void foo6( int a )
-{
-    // не нашел
-    int *b[10];
-    for( int i = 0; i < 10; ++i )
-    {
-        b[ i ] = new int(i);
+// никто не нашел
+void test_foo6( unsigned int sz ) {
+    int *b[sz];
+    for( int i = 0; i < sz; ++i ) {
+        b[ i ] = new int[i];
     }
-    for( int i = 0; i < 9; ++i )
-    {
+    for( int i = 0; i < sz - 1; ++i ) {
         delete b[ i ];
     }
-    // -leak b[9]
 }
 
-int *f()
-{
-    int *a = new int(123);
-    return a;
+void clear( int *a ) {
+    delete[] a;
 }
 
-void bar( int *a )
-{
-    if( *a > 50 )
-    {
-        delete a;
-    }
+void test_foo7() {
+    // ложное срабатывание ESCA + и pvs +
+    int *a = new int[10];
+    clear(a);
 }
 
-int foo7()
-{
-    int *a = f(); // ложное срабатывание
-    bar(a);
-    return 123;
-}
-
-std::vector<char *> dd;
-
-void foo8()
-{
-    int x = rand();
-    auto a = new char[10];
-    try
-    {
-        char ch = a[9];
-        if( x > 5 )
-        {
-            throw std::logic_error("asfd");
-        }
-        // никто не нашел
-        delete[] a;
-        // -leak a
-    }
-    catch( const std::exception &e )
-    {
-        throw;
-    }
-}
-
-int main( int argc, char *argv[] )
-{
-    auto f = openFile();
-    fclose(f);
-    foo1(argc, 10);
-    foo2();
-    foo3(argc);
-    foo4(argc);
-    foo5(argc);
-    foo6(argc);
-    int x = foo7();
-    int y = getValue(argc);
-    int z = getValue(1);
-    x = 1 - z + x;
-    foo8();
-    return x + y;
+int main() {
+    test_foo1();
+    test_foo2(10);
+    test_foo3_1();
+    test_foo3_2(2);
+    test_foo4_1(2);
+    test_foo4_2(true);
+    test_foo5(2);
+    test_foo6(2);
+    test_foo7();
+    getFile();
+    return 0;
 }

@@ -15,3 +15,8 @@ target_link_libraries(run_tests
         clangBasic
         clangFrontend
         )
+
+#add_executable(tests examples/test1.cpp)
+#add_executable(tests examples/test2.cpp)
+#add_executable(tests examples/test3.cpp)
+add_executable(tests examples/test4.cpp)

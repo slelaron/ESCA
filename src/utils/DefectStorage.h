@@ -40,6 +40,15 @@ private:
     {
         std::string varName;
         std::string location;
+
+        bool operator>( Defect &other ) const
+        {
+            return location > other.location;
+        }
+        bool operator<( Defect &other ) const
+        {
+            return location < other.location;
+        }
     };
 
     std::vector<Defect> defects;

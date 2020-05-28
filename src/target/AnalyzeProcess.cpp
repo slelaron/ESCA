@@ -31,7 +31,6 @@ void AnalyzeProcess::StartAnalyze()
     }
     for( auto &f : *allFunctions )
     {
-        ProcessFunction(f.second);
         delete f.second;
         f.second = nullptr;
     }

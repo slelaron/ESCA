@@ -82,11 +82,11 @@ private:
     std::map<std::string, std::string> staticFuncMapping;
 
     /// @brief Хранилище переменных
-    std::set<std::string> allVariables;
+//    std::set<std::string> allVariables;
 
 //    std::set<std::string> localVariables;
 
-    std::map<std::string, bool> variableToExpr;
+//    std::map<std::string, bool> variableToExpr;
 
 //    std::map<std::string, std::set<std::string>> classToVars;
 
