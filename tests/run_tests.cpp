@@ -20,9 +20,9 @@ int main()
     const std::string RESOURCE_PATH = std::filesystem::current_path().string() + "/examples/";
     std::vector<std::string> files = {
             "test1.cpp",
-//            "test2.cpp",
-//            "test3.cpp",
-//            "test4.cpp",
+            "test2.cpp",
+            "test3.cpp",
+            "test4.cpp",
     };
 
     ASTWalker walker(INCLUDE_PATHS);

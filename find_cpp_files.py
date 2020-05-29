@@ -2,7 +2,7 @@
 import argparse
 import os
 
-extensions = ['.c', '.cpp', '.cxx']
+extensions = ['.c', '.cpp', '.cxx', '.cc', '.C', '.CPP', '.c++', '.cp']
 
 
 def check_cxx(file):

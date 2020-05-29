@@ -22,6 +22,7 @@ void DefectStorage::AddDefect( const string &var, const string &location )
 
 void DefectStorage::PrintDefects( const std::string &outputFile )
 {
+    sort(defects.begin(), defects.end());
     if( outputFile.empty())
     {
         for( const auto &defect : defects )

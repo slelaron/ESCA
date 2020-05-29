@@ -108,8 +108,8 @@ bool ESCAASTVisitor::ProcessFunction( clang::FunctionDecl *f )
         // lazy
         //ProcessReturnNone();
         context.ResetFunction();
-        allVariables.clear();
-        variableToExpr.clear();
+//        allVariables.clear();
+//        variableToExpr.clear();
 //        localVariables.clear();
     }
 
@@ -218,7 +218,7 @@ bool ESCAASTVisitor::ProcessStmt( clang::Stmt *stmt )
 
 bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool createOnStack )
 {
-    auto saveVars = allVariables;
+//    auto saveVars = allVariables;
     if( createOnStack )
     {
         context.CreateCompoundStatement();
@@ -235,7 +235,7 @@ bool ESCAASTVisitor::ProcessCompound( clang::CompoundStmt *body, bool createOnSt
         }
     }
 
-    allVariables = saveVars; // удаляем локальные переменные
+//    allVariables = saveVars; // удаляем локальные переменные
 
     if( createOnStack )
     {
@@ -405,7 +405,7 @@ bool ESCAASTVisitor::ProcessDeclaration( clang::VarDecl *vd )
         {
             init->EvaluateAsBooleanCondition(res, *astContext);
 //            z3::expr x = ;
-            variableToExpr[ varName ] = res;
+//            variableToExpr[ varName ] = res;
         }
         else
         {
@@ -418,13 +418,13 @@ bool ESCAASTVisitor::ProcessDeclaration( clang::VarDecl *vd )
         return true;
     }
 
-    while( allVariables.find(varName) != allVariables.end())
-    {
-        //   varName += "_";
-        Cout << "Variable with name " << varName << " declared twice\n";
-        return true;
-    }
-    allVariables.insert(varName);
+//    while( allVariables.find(varName) != allVariables.end())
+//    {
+//        //   varName += "_";
+//        Cout << "Variable with name " << varName << " declared twice\n";
+//        return true;
+//    }
+//    allVariables.insert(varName);
 
 
     return ProcessAssignment(init, varName, true);
@@ -485,20 +485,20 @@ bool ESCAASTVisitor::ProcessReturn( clang::ReturnStmt *ret )
     std::string returnVarName2;
 
     using namespace clang;
-
-    if( auto ice = dyn_cast<ImplicitCastExpr>(retVal))
+    Stmt *subexpr = retVal;
+    while( isa<ImplicitCastExpr>(subexpr))
     {
-        Stmt *subexpr = ice->getSubExpr();
-        if( auto ref = dyn_cast<DeclRefExpr>(subexpr)) //pointer
-        {
-            std::string retName = ref->getNameInfo().getName().getAsString();
-
-            context.curFunction->returnName.insert(retName);
-
-            returnVarName2 = retName;
-        }
+        subexpr = cast<ImplicitCastExpr>(subexpr)->getSubExpr();
     }
-    else if( auto newPtr = dyn_cast<CXXNewExpr>(retVal))
+    if( auto ref = dyn_cast<DeclRefExpr>(subexpr)) //pointer
+    {
+        std::string retName = ref->getNameInfo().getName().getAsString();
+
+        context.curFunction->returnName.insert(retName);
+
+        returnVarName2 = retName;
+    }
+    else if( auto newPtr = dyn_cast<CXXNewExpr>(subexpr))
     {
         std::string dummyNewVarName = "!dummyVar";
         context.curFunction->returnName.insert(dummyNewVarName);

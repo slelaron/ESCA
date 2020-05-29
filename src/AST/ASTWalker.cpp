@@ -168,6 +168,10 @@ void ASTWalker::WalkAST( const std::vector<std::string> &files )
         {
             std::cerr << "File : " << file << ". exception: " << e.what();
         }
+        catch( ...)
+        {
+            std::cerr << "unhandled err" << std::endl;
+        }
 //        std::cout << "Start analyze for " << file << std::endl;
         std::cout << "Finish walk file: " << file << std::endl;
     }
