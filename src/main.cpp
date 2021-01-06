@@ -8,6 +8,7 @@
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
 #include "utils/DefectStorage.h"
+#include "CWE-467/Consumer.h"
 
 
 void usage()
@@ -111,7 +112,7 @@ bool parseArgs( std::vector<std::string> &files, std::string &path, int argc, ch
 }
 
 
-int main( int argc, char **argv )
+int main_( int argc, char **argv )
 {
     std::vector<std::string> files;
     std::string path;
@@ -149,5 +150,45 @@ int main( int argc, char **argv )
 
     std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
 
+    return 0;
+}
+
+std::optional<std::string> parse_cwe_args(int argc, char **argv) {
+    if (argc < 2) {
+        std::cerr << "Not enough arguments" << std::endl;
+    }
+    if (argc < 2 || std::strcmp(argv[1], "-h") == 0 || std::strcmp(argv[1], "--help") == 0) {
+        std::cout << "USAGE: CWE467 [<source file>|-h|--help]" << std::endl;
+        return std::nullopt;
+    }
+    if (std::filesystem::exists(argv[1])) {
+        return argv[1];
+    } else {
+        std::cerr << "File " << argv[1] << " cannot be found by the program" << std::endl;
+    }
+    return std::nullopt;
+}
+
+int main(int argc, char **argv) {
+    auto raw_file = parse_cwe_args(argc, argv);
+    if (!raw_file) {
+        return 1;
+    }
+#ifdef __unix__
+    const std::vector<std::string> INCLUDE_PATHS = {
+            "/usr/include/",
+            "/usr/include/c++/9/",
+            "/usr/include/x86_64-linux-gnu/",
+            "/usr/include/x86_64-linux-gnu/c++/9/",
+            "/usr/lib/gcc/x86_64-linux-gnu/9/include/",
+    };
+#elif
+    const std::vector<std::string> INCLUDE_PATHS;
+#endif
+    std::string file = std::move(*raw_file);
+    ASTWalker walker(INCLUDE_PATHS, new Consumer);
+    walker.WalkAST({file});
+
+    std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
     return 0;
 }

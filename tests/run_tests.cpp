@@ -1,6 +1,7 @@
 #include <iostream>
 #include <filesystem>
 #include <utils/DefectStorage.h>
+#include <CWE-467/Consumer.h>
 #include "AST/ASTWalker.h"
 #include "target/AnalyzeProcess.h"
 
@@ -39,6 +40,9 @@ int main()
     a.StartAnalyze();
 
     DefectStorage::Instance().PrintDefects();
+
+    ASTWalker walker1(INCLUDE_PATHS, new Consumer);
+    walker1.WalkAST(RESOURCE_PATH + "test5.cpp");
 
     std::cout << "Working time: " << clock() / CLOCKS_PER_SEC << " sec" << std::endl;
     return 0;

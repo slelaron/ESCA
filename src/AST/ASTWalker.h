@@ -15,7 +15,7 @@
 class ASTWalker
 {
 public:
-    explicit ASTWalker( const std::vector<std::string> &paths );
+    explicit ASTWalker( const std::vector<std::string> &paths, clang::ASTConsumer *consumer = new ESCAASTConsumer() );
 
 //    ~ASTWalker();
 
@@ -46,7 +46,7 @@ protected:
 
     std::shared_ptr<clang::HeaderSearchOptions> headerSearchOptions;
     std::unique_ptr<clang::ASTContext> astContext;
-    std::unique_ptr<ESCAASTConsumer> astConsumer;
+    std::unique_ptr<clang::ASTConsumer> astConsumer;
 
 private:
     clang::DiagnosticsEngine *pDiagnosticsEngine;

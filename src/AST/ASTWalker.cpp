@@ -16,8 +16,8 @@
 
 #include "ASTWalker.h"
 
-ASTWalker::ASTWalker( const std::vector<std::string> &paths )
-        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(new ESCAASTConsumer())
+ASTWalker::ASTWalker( const std::vector<std::string> &paths, clang::ASTConsumer *consumer )
+        : headerSearchOptions(new clang::HeaderSearchOptions()), astConsumer(consumer)
 {
     CommonStorage::Instance().SetIncludeDirs(paths);
     SetIncludeDirectories(paths);
@@ -133,7 +133,7 @@ bool ASTWalker::WalkAST( const std::string &fileName )
     astContext->InitBuiltinTypes(targetInfo);
 //    astConsumer->Initialize(*astContext);
     pTextDiagnosticPrinter->BeginSourceFile(languageOptions, preprocessor);
-    clang::ParseAST(*preprocessor, static_cast<clang::ASTConsumer *>(astConsumer.get()), *astContext);
+    clang::ParseAST(*preprocessor, astConsumer.get(), *astContext);
     pTextDiagnosticPrinter->EndSourceFile();
     delete preprocessor;
     delete pTargetInfo;

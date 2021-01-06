@@ -6,6 +6,7 @@ target_link_libraries(run_tests
         LLVM
         utils
         ast
+        cwe-467
         target
         fsm
         smt
@@ -20,3 +21,4 @@ target_link_libraries(run_tests
 #add_executable(tests examples/test2.cpp)
 #add_executable(tests examples/test3.cpp)
 add_executable(tests examples/test4.cpp)
+#add_executable(tests examples/test5.cpp)
